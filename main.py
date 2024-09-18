@@ -141,23 +141,22 @@ def runTraining(args):
 
     for e in range(args.epochs):
         for m in ['train', 'val']:
-            match m:
-                case 'train':
-                    net.train()
-                    opt = optimizer
-                    cm = Dcm
-                    desc = f">> Training   ({e: 4d})"
-                    loader = train_loader
-                    log_loss = log_loss_tra
-                    log_dice = log_dice_tra
-                case 'val':
-                    net.eval()
-                    opt = None
-                    cm = torch.no_grad
-                    desc = f">> Validation ({e: 4d})"
-                    loader = val_loader
-                    log_loss = log_loss_val
-                    log_dice = log_dice_val
+            if m == 'train':
+                net.train()
+                opt = optimizer
+                cm = Dcm
+                desc = f">> Training   ({e: 4d})"
+                loader = train_loader
+                log_loss = log_loss_tra
+                log_dice = log_dice_tra
+            if m == 'val':
+                net.eval()
+                opt = None
+                cm = torch.no_grad
+                desc = f">> Validation ({e: 4d})"
+                loader = val_loader
+                log_loss = log_loss_val
+                log_dice = log_dice_val
 
             with cm():  # Either dummy context manager, or the torch.no_grad for validation
                 j = 0
