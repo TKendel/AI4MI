@@ -161,6 +161,7 @@ def main(args: argparse.Namespace):
     dest_path: Path = Path(args.dest_dir)
 
     # Assume the clean up is done before calling the script
+    print(src_path)
     assert src_path.exists()
     assert not dest_path.exists()
 
