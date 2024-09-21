@@ -47,9 +47,8 @@ from utils import (Dcm,
                    probs2class,
                    tqdm_,
                    dice_coef,
-                   save_images,
-                   volume_dice)
-                 
+                   save_images)
+from metrics import volume_dice
 
 from losses import (CrossEntropy)
 
