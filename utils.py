@@ -27,6 +27,9 @@ from functools import partial
 from multiprocessing import Pool
 from contextlib import AbstractContextManager
 from typing import Callable, Iterable, List, Set, Tuple, TypeVar, cast
+import os
+from collections import defaultdict
+
 
 import torch
 import numpy as np
@@ -107,8 +110,8 @@ def probs2class(probs: Tensor) -> Tensor:
     b, _, *img_shape = probs.shape
     assert simplex(probs)
 
-    res = probs.argmax(dim=1)
-    assert res.shape == (b, *img_shape)
+    res = probs.argmax(dim=1)  # selects the class with the highest probability for each pixel.
+    assert res.shape == (b, *img_shape) #res will be a tensor of class labels for each pixel (B, H, W)
 
     return res
 
@@ -152,8 +155,9 @@ def meta_dice(sum_str: str, label: Tensor, pred: Tensor, smooth: float = 1e-8) -
     return dices
 
 
-dice_coef = partial(meta_dice, "bk...->bk")
-dice_batch = partial(meta_dice, "bk...->k")  # used for 3d dice
+dice_coef = partial(meta_dice, "bk...->bk") #computes Dice coefficients per image (b dimension) and per class (k dimension).
+dice_batch = partial(meta_dice, "bk...->k")  # used for 3d dice  ## dice_scores will have shape (k,), giving us the Dice coefficient for each class across the entire 3D volume
+
 
 
 def intersection(a: Tensor, b: Tensor) -> Tensor:
@@ -176,3 +180,80 @@ def union(a: Tensor, b: Tensor) -> Tensor:
     assert sset(res, [0, 1])
 
     return res
+
+
+
+def count_slices_per_patient(image_dir):
+    """
+    Count the number of slices for each patient based on filenames in a directory.
+    Args:
+    - image_dir (str): Path to the directory containing patient slice images.
+    Returns:
+    - slices_per_patient (dict): Dictionary where keys are patient IDs and values are the number of slices.
+    """
+    slices_per_patient = defaultdict(int)
+
+    for filename in os.listdir(image_dir):
+        if filename.lower().endswith(".png"):
+            # Assuming the format is like "Patient_03_000.png"
+            patient_id = '_'.join(filename.split('_')[:2])
+            slices_per_patient[patient_id] += 1
+
+    return slices_per_patient
+
+
+def volume_dice(predictions, gts, path_to_slices):
+    """
+    Computes Dice similarity coefficient for predicted and ground truth segmentations per patient.
+
+    Parameters:
+    - predictions (Tensor): Predicted segmentation volumes, shape (num_slices, num_classes, height, width).
+    - gts (Tensor): Ground truth segmentation volumes, shape same as `predictions`.
+    - path_to_slices (str): Path to directory containing patient slices, used to count slices per patient.
+
+    Returns:
+    - dice_scores_per_patient (dict): A dictionary where keys are patient IDs and values are tensors of Dice scores 
+      for each class, shape (num_classes,).
+    
+    Workflow:
+    1. Organizes slices into patient volumes.
+    2. For each patient, computes the Dice score across all classes using `dice_batch`.
+    3. Returns a dictionary mapping patient IDs to their corresponding Dice scores.
+    """
+    prediction_patient_volumes = {}
+    gt_patient_volumes = {}
+    dice_scores_per_patient = {}
+
+    start = 0
+    count_slices = count_slices_per_patient(path_to_slices)
+    
+    for patient, num_slices in count_slices.items():
+        predictions_patient_slices = predictions[start:start + num_slices]
+        gt_patient_slices = gts[start:start + num_slices]
+
+        prediction_patient_volumes[patient] = predictions_patient_slices
+        gt_patient_volumes[patient] = gt_patient_slices
+
+        # {
+        # "Patient_01": tensor of shape (nr slices, nr classes, 256, 256),
+        # "Patient_02": tensor of shape (nr slices, nr classes, 256, 256),
+        # "Patient_03": tensor of shape (nr slices, nr classes, 256, 256),
+        # }
+        
+        # Update the start index for the next patient
+        start += num_slices
+
+    
+    for (patient_pred, volumepred), (patient_gt, volumegt) in zip(prediction_patient_volumes.items(), gt_patient_volumes.items()):
+        assert patient_pred == patient_gt  # Ensure that we are processing the same patient
+        dicescores = dice_batch(volumegt, volumepred)
+    
+        # Store the Dice scores per patient
+        dice_scores_per_patient[patient_pred] = dicescores
+        print(dice_scores_per_patient)
+
+    # Return the dictionary containing Dice scores for each patient
+    return dice_scores_per_patient
+
+  
+
