@@ -36,6 +36,7 @@ import torch.nn.functional as F
 from torch import nn, Tensor
 from torchvision import transforms
 from torch.utils.data import DataLoader
+import torch.optim.lr_scheduler as lr_scheduler #learning rate scheduler 
 
 from dataset import SliceDataset
 from ShallowNet import shallowCNN
@@ -69,8 +70,12 @@ def setup(args) -> tuple[nn.Module, Any, Any, DataLoader, DataLoader, int]:
     net.init_weights()
     net.to(device)
 
+    #learning rate & adam optimizer
     lr = 0.0005
     optimizer = torch.optim.Adam(net.parameters(), lr=lr, betas=(0.9, 0.999))
+
+    #adding a learning rate scheduler
+    scheduler = lr_scheduler.PolynomialLR(optimizer, total_iters=5, power=1.0)
 
     # Dataset part
     B: int = datasets_params[args.dataset]['B']
@@ -141,25 +146,6 @@ def runTraining(args):
 
     for e in range(args.epochs):
         for m in ['train', 'val']:
-            # Because we cannot get python 3.11 running in Snellius, we changed the match cases to if statements
-            if m == 'train':
-                net.train()
-                opt = optimizer
-                cm = Dcm
-                desc = f">> Training   ({e: 4d})"
-                loader = train_loader
-                log_loss = log_loss_tra
-                log_dice = log_dice_tra
-            if m == 'val':
-                net.eval()
-                opt = None
-                cm = torch.no_grad
-                desc = f">> Validation ({e: 4d})"
-                loader = val_loader
-                log_loss = log_loss_val
-                log_dice = log_dice_val
-            #If we ever get python 3.11, we can change to match and remove the upper two if statements
-            """
             match m:
                 case 'train':
                     net.train()
@@ -177,7 +163,6 @@ def runTraining(args):
                     loader = val_loader
                     log_loss = log_loss_val
                     log_dice = log_dice_val
-              """
 
             with cm():  # Either dummy context manager, or the torch.no_grad for validation
                 j = 0
@@ -256,7 +241,7 @@ def main():
     parser.add_argument('--dest', type=Path, required=True,
                         help="Destination directory to save the results (predictions and weights).")
 
-    parser.add_argument('--num_workers', type=int, default=0)
+    parser.add_argument('--num_workers', type=int, default=5)
     parser.add_argument('--gpu', action='store_true')
     parser.add_argument('--debug', action='store_true',
                         help="Keep only a fraction (10 samples) of the datasets, "
