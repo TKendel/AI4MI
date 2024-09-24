@@ -47,7 +47,6 @@ def volume_dice(predictions, gts, path_to_slices):
     
         # Store the Dice scores per patient
         dice_scores_per_patient[patient_pred] = dicescores
-        print(dice_scores_per_patient)
 
     # Return the dictionary containing Dice scores for each patient
     return dice_scores_per_patient
