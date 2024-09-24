@@ -256,18 +256,20 @@ def runTraining(args):
                                          for k in range(1, K)}
                     tq_iter.set_postfix(postfix_dict)
 
-        # after each epoch. calculate the 3d dice for each class for each patient 
-        all_predictions_tensor = torch.cat(all_predictions, dim=0)
-        all_gt_tensor = torch.cat(all_gt_slices, dim=0) 
+            # after each epoch. calculate the 3d dice for each class for each patient 
+            all_predictions_tensor = torch.cat(all_predictions, dim=0)
+            all_gt_tensor = torch.cat(all_gt_slices, dim=0) 
 
-        if m == 'train':
-            path_to_slices = os.path.join("data", "SEGTHOR", "train", "img")
-        else:
-            path_to_slices = os.path.join("data", "SEGTHOR", "val", "img")
-        
-        dice_scores_per_patient = volume_dice(all_predictions_tensor, all_gt_tensor, path_to_slices)
-        for patient_idx, (patient, dice_scores) in enumerate(dice_scores_per_patient.items()):
-            log_3d_dice[e, patient_idx, :] = dice_scores  
+            if m == 'train':
+                path_to_slices = os.path.join("data", "SEGTHOR", "train", "img")
+            else:
+                path_to_slices = os.path.join("data", "SEGTHOR", "val", "img")
+            
+            dice_scores_per_patient = volume_dice(all_predictions_tensor, all_gt_tensor, path_to_slices)
+            print(dice_scores_per_patient)
+            for patient_idx, (patient, dice_scores) in enumerate(dice_scores_per_patient.items()):
+                log_3d_dice[e, patient_idx, :] = dice_scores  
+
             
 
         # I save it at each epochs, in case the code crashes or I decide to stop it early
