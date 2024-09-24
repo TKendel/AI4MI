@@ -1,0 +1,6 @@
+Class Distribution:
+Class 0: 1924610869 voxels
+Class 4: 3820699 voxels
+Class 2: 15121197 voxels
+Class 1: 880787 voxels
+Class 3: 674928 voxels
