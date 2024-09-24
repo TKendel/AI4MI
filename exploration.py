@@ -1,6 +1,7 @@
 import os
 from collections import defaultdict
-
+import SimpleITK as sitk
+from collections import Counter
 
 def count_segmentations_per_patient(image_dir):
     """
@@ -75,3 +76,42 @@ def count_slices_in_set(image_dir):
 # x  = count_slices_per_patient(os.path.join("data", "SEGTHOR", "train", "img"))
 # print(max(x.values()))
 
+
+
+def classdistribution(base_path, output_file):
+    segmentation_data = []
+    
+    for patient_id in range(1, 41):
+        padded_patient_id = str(patient_id).zfill(2) 
+        gt_path = os.path.join(base_path, f"Patient_{padded_patient_id}", "GT.nii.gz")    
+        
+        if os.path.exists(gt_path):
+            # Load the GT segmentation using SimpleITK
+            gt_image = sitk.ReadImage(gt_path)
+            gt_array = sitk.GetArrayFromImage(gt_image)
+            
+            # Flatten the array to get the class distribution
+            flattened_gt = gt_array.flatten()
+            
+            # Add the data to the list
+            segmentation_data.extend(flattened_gt)
+        else:
+            print(f"GT file not found for Patient_{padded_patient_id}")
+
+    # Count the occurrences of each class (background and organs)
+    class_distribution = Counter(segmentation_data)
+
+    # Write the class distribution to a text file
+    with open(output_file, 'w') as f:
+        f.write("Class Distribution:\n")
+        for organ_class, count in class_distribution.items():
+            f.write(f"Class {organ_class}: {count} voxels\n")
+    
+    return class_distribution
+
+# Define the base path and output file
+base_path = "./data/segthor_train/train/"
+output_file = './class_distribution.txt'
+
+# Run the function and write the output to a text file
+classdist = classdistribution(base_path, output_file)
