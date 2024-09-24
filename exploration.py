@@ -79,27 +79,24 @@ def count_slices_in_set(image_dir):
 
 
 def classdistribution(base_path, output_file):
-    segmentation_data = []
-    
+    # Initialize an empty counter for class distribution
+    class_distribution = Counter()
+
+    # Process each patient one by one to avoid memory issues
     for patient_id in range(1, 41):
         padded_patient_id = str(patient_id).zfill(2) 
         gt_path = os.path.join(base_path, f"Patient_{padded_patient_id}", "GT.nii.gz")    
-        
+
         if os.path.exists(gt_path):
             # Load the GT segmentation using SimpleITK
             gt_image = sitk.ReadImage(gt_path)
             gt_array = sitk.GetArrayFromImage(gt_image)
-            
-            # Flatten the array to get the class distribution
+
+            # Flatten the array and update the class distribution
             flattened_gt = gt_array.flatten()
-            
-            # Add the data to the list
-            segmentation_data.extend(flattened_gt)
+            class_distribution.update(flattened_gt)
         else:
             print(f"GT file not found for Patient_{padded_patient_id}")
-
-    # Count the occurrences of each class (background and organs)
-    class_distribution = Counter(segmentation_data)
 
     # Write the class distribution to a text file
     with open(output_file, 'w') as f:
@@ -114,4 +111,43 @@ base_path = "./data/segthor_train/train/"
 output_file = './class_distribution.txt'
 
 # Run the function and write the output to a text file
-classdist = classdistribution(base_path, output_file)
+# classdist = classdistribution(base_path, output_file)
+
+def calculate_class_distribution(class_voxels, exclude_background=False):
+    if exclude_background:
+        class_voxels = {key: value for key, value in class_voxels.items() if key != 0}
+    
+    # Total number of voxels
+    total_voxels = sum(class_voxels.values())
+    
+    # Calculate percentage distribution
+    class_distribution = {key: (value / total_voxels) * 100 for key, value in class_voxels.items()}
+    
+    return class_distribution
+
+def read_class_distribution_from_txt(file_path):
+    """
+    Reads class distribution from a text file and returns a dictionary of class voxel counts.
+    
+    Parameters:
+    file_path (str): The path to the text file containing class distribution.
+    
+    Returns:
+    dict: A dictionary where keys are class labels and values are voxel counts.
+    """
+    class_voxels = {}
+    
+    with open(file_path, 'r') as file:
+        for line in file:
+            if line.startswith('Class') and not line.startswith('Class Distribution'):
+                parts = line.split(':')
+                class_id = int(parts[0].strip().split()[1])
+                voxel_count = int(parts[1].strip().split()[0])
+                class_voxels[class_id] = voxel_count
+    
+    return class_voxels
+
+# Now read from the file and return the class distribution
+class_voxels_from_file = read_class_distribution_from_txt("class_distribution.txt")
+class_perc = calculate_class_distribution(class_voxels_from_file, exclude_background=True)
+print(class_perc)
