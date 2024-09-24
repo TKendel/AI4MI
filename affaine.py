@@ -5,10 +5,10 @@ import matplotlib.pyplot as plt
 
 
 
-# Import Default Parameter Map
-parameter_object = itk.ParameterObject.New()
-parameter_map_rigid = parameter_object.GetDefaultParameterMap('rigid')
-parameter_object.AddParameterMap(parameter_map_rigid)
+# # Import Default Parameter Map
+# parameter_object = itk.ParameterObject.New()
+# parameter_map_rigid = parameter_object.GetDefaultParameterMap('rigid')
+# parameter_object.AddParameterMap(parameter_map_rigid)
 
 
 # Import Default Parameter Map
@@ -17,11 +17,22 @@ parameter_map_rigid = parameter_object.GetDefaultParameterMap('rigid')
 parameter_object.AddParameterMap(parameter_map_rigid)
 parameter_map_affine= parameter_object.GetDefaultParameterMap('affine')
 parameter_object.AddParameterMap(parameter_map_affine)
-parameter_map_bspline = parameter_object.GetDefaultParameterMap('bspline')
-parameter_object.AddParameterMap(parameter_map_bspline)
+# parameter_map_bspline = parameter_object.GetDefaultParameterMap('bspline')
+# parameter_object.AddParameterMap(parameter_map_bspline)
 
-fixed_image = itk.imread('data\SEGTHOR_tmp\\train\gt\Patient_27_0077.png')
+# parameter_object.AddParameterFile('Transform_1 (-).txt')
+# parameter_object.SetParameter(0, "WriteResultImage", "true")
+
+# transforms = itk.transformread('Transform_1.tfm')
+
+# fixed_image = itk.imread('data\SEGTHOR_tmp\\train\gt\Patient_27_0077.png')
 # fixed_image = itk.imread('test1.png', itk.F)
+
+fixed_mask = itk.imread('3DModels\GT2.nii.gz_1.nii', itk.UC)
+moving_mask = itk.imread('3DModels\GT.nii.gz_1.nii', itk.UC)
+
+test_mask = itk.imread('3DModels\GT.nii.gz_6_1.nii', itk.UC)
+
 
 
 # ## Convert to HSV
@@ -39,7 +50,7 @@ fixed_image = itk.imread('data\SEGTHOR_tmp\\train\gt\Patient_27_0077.png')
 # plt.imshow(heart_fixed)
 # plt.show()
 
-moving_image = itk.imread('data\SEGTHOR\\train\gt\Patient_27_0028.png')
+# moving_image = itk.imread('data\SEGTHOR\\train\gt\Patient_27_0028.png')
 # moving_image = itk.imread('test2.png', itk.F)
 
 # ## Convert to HSV
@@ -56,10 +67,27 @@ moving_image = itk.imread('data\SEGTHOR\\train\gt\Patient_27_0028.png')
 
 # plt.imshow(heart_moving)
 # plt.show()
-registered_image, params = itk.elastix_registration_method(fixed_image, moving_imag )
+# registered_image, params = itk.elastix_registration_method(fixed_image, moving_imag )
 
-plt.imshow(registered_image)
-plt.show()
+# Call registration function
+result_image, result_transform_parameters = itk.elastix_registration_method(
+    fixed_mask, moving_mask,
+    parameter_object=parameter_object,
+    log_to_console=True)
+
+
+# result_image_transformix = itk.transformix_filter(
+#     moving_mask,
+#     transforms)
+
+result_image_transformix = itk.transformix_filter(
+    test_mask,
+    result_transform_parameters)
+
+# image = itk.rescale_intensity_image_filter(result_image_transformix, output_minimum=0, output_maximum=255)
+itk.imwrite(result_image_transformix, "binary_thinning2.nii")
+# plt.imshow(result_image)
+# plt.show()
 
 # result_image_transformix = itk.transformix_filter(
 #     test,
