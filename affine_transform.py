@@ -1,6 +1,6 @@
 #Afffine transform on segmentations
 
-import cv2
+#import cv2
 import numpy as np
 import nibabel as nib
 import os
