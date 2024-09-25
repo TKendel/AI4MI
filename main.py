@@ -275,10 +275,10 @@ def runTraining(args):
                 for patient_idx, (patient, dice_scores) in enumerate(dice_scores_per_patient.items()):
                     log_3d_dice[e, patient_idx, :] = dice_scores  
 
-                print(f"3D Dice Score (averaged over all patients and classes): {log_3d_dice[e, :, 1:].mean():05.3f}")
+                print(f"3d Dice Score (averaged over all patients and classes): {log_3d_dice[e, :, 1:].mean():05.3f}")
                 if K > 2:
                     for k in range(1, K):
-                        print(f"Dice-{k}: {log_dice[e, :j, k].mean():05.3f}")
+                        print(f"3dDice-{k}: {log_3d_dice[e, :j, k].mean():05.3f}")
 
         
         print(log_3d_dice[e, :i + 1].mean())
