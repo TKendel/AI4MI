@@ -49,7 +49,7 @@ heart_ref = np.where(ref_np == 2, ref_np, 0) #np.where(conndition, if yes, if no
 
 
 
-broken = nib.load('data/segthor_train/train/Patient_27/GT.nii.gz')  #loaad image to fix .nii.gz
+broken = nib.load('data/segthor_train/train/Patient_27/GT.nii.gz')  #load image to fix .nii.gz
 broken_np = np.array(broken.dataobj)    # to np arraay
 broken_heart = np.where(broken_np == 2, broken_np, 0) # HEART - MASK 2
 
