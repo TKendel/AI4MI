@@ -274,16 +274,20 @@ def runTraining(args):
                                          for k in range(1, K)}
                     tq_iter.set_postfix(postfix_dict)
 
-            # after each epoch. calculate the 3d dice for each class for each patient 
-            all_predictions_tensor = torch.cat(all_predictions, dim=0)
-            all_gt_tensor = torch.cat(all_gt_slices, dim=0) 
-
             if m == 'val':
+                all_predictions_tensor = torch.cat(all_predictions, dim=0)
+                all_gt_tensor = torch.cat(all_gt_slices, dim=0) 
                 path_to_slices = os.path.join("data", "SEGTHOR", "val", "img")
                 dice_scores_per_patient = volume_dice(all_predictions_tensor, all_gt_tensor, path_to_slices)
                 print(dice_scores_per_patient)
                 for patient_idx, (patient, dice_scores) in enumerate(dice_scores_per_patient.items()):
                     log_3d_dice[e, patient_idx, :] = dice_scores  
+
+                print(f"3D Dice Score (averaged over all patients and classes): {log_3d_dice[e, :, 1:].mean():05.3f}")
+                if K > 2:
+                    for k in range(1, K):
+                        print(f"Dice-{k}: {log_dice[e, :j, k].mean():05.3f}")
+
         
         print(log_3d_dice[e, :i + 1].mean())
         # I save it at each epochs, in case the code crashes or I decide to stop it early
@@ -295,7 +299,7 @@ def runTraining(args):
         np.save(args.dest / "dloss_val.npy", log_dloss_val)
         np.save(args.dest / "dice_val.npy", log_dice_val)
 
-        np.save(args.dest / "dice3d_val.npy", log_3d_dice_val)
+        np.save(args.dest / "3ddice_val.npy", log_3d_dice_val)
         
 
         current_dice: float = log_dice_val[e, :, 1:].mean().item()
