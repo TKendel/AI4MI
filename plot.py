@@ -63,16 +63,15 @@ def run(args: argparse.Namespace) -> None:
     elif 'dice_val' in args.metric_file.name:
         title = f"{args.model} Dice Score - Validation"
         ylabel = "Dice Score"
-        llimit = 0.4
+        llimit = 0
         ulimit = 1
-    elif 'vdice_val' in args.metric_file.name:
+    elif 'dice3d_val' in args.metric_file.name:
         title = f"{args.model} Volumetric Dice Score - Validation"
         ylabel = "VDice Score"
-        llimit = 0.4
+        llimit = 0
         ulimit = 1
-    else:
-        title = f"{args.model} Metric - Validation"
-        ylabel = "Metric"
+        ylabel = "VDice"
+        
 
     fig, ax = plt.subplots(figsize=(8, 6))  # Adjusted size for better readability
     ax.set_title(title, fontsize=16)  # Title dynamically set
