@@ -132,7 +132,7 @@ def run(args: argparse.Namespace) -> None:
 
     # Adding labels and grid
     ax.set_xlabel("Epochs", fontsize=14)
-    ax.set_ylabel("Dice score", fontsize=14)
+    ax.set_ylabel(ylabel, fontsize=14)  # Y-axis label dynamically set
     ax.grid(True, which='both', linestyle='--', linewidth=0.7, alpha=0.6)  # Add grid lines for clarity
 
     # Adding tighter layout
