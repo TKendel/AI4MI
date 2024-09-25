@@ -143,7 +143,7 @@ for patient in patient_list:
         broken_heart = np.roll(broken_heart, round(z), axis=2)
 
         reconstruction = broken_but_heart
-        reconstruction = np.where(broken_heart != 2, reconstruction, 2).astype(np.int8)    #where broken_heart does not have a 2, keep it as is, else change to a 2
+        reconstruction = np.where(broken_heart != 2, reconstruction, 2).astype(np.uint8)    #where broken_heart does not have a 2, keep it as is, else change to a 2
 
         output = nib.Nifti1Image(reconstruction, broken.affine)
         nib.save(output,  os.path.join('data/segthor_train/train/Patient_'+f"{patient:02}", 'gt.nii.gz') )
