@@ -50,7 +50,7 @@ from utils import (Dcm,
                    save_images)
 from metrics import volume_dice
 
-from losses import (CrossEntropy)
+from losses import CrossEntropy, DiceLoss
 
 
 
@@ -110,7 +110,7 @@ def setup(args) -> tuple[nn.Module, Any, Any, DataLoader, DataLoader, int]:
     train_loader = DataLoader(train_set,
                               batch_size=B,
                               num_workers=args.num_workers,
-                              shuffle=False)  # use to be True --> but because of the way i implemented the 3d dice evaluation to work, the original order needs to be perserved...
+                              shuffle=True)  # use to be True --> but because of the way i implemented the 3d dice evaluation to work, the original order needs to be perserved...
 
     val_set = SliceDataset('val',
                            root_dir,
@@ -140,6 +140,7 @@ def runTraining(args):
 
     if args.mode == "full":
         loss_fn = CrossEntropy(idk=list(range(K)))  # Supervise both background and foreground
+        dloss_fn = DiceLoss(idk=list(range(K)))  # Supervise both background and foreground
     elif args.mode in ["partial"] and args.dataset in ['SEGTHOR', 'SEGTHOR_STUDENTS']:
         loss_fn = CrossEntropy(idk=[0, 1, 3, 4])  # Do not supervise the heart (class 2)
     else:
@@ -147,8 +148,11 @@ def runTraining(args):
 
     # Notice one has the length of the _loader_, and the other one of the _dataset_
     log_loss_tra: Tensor = torch.zeros((args.epochs, len(train_loader)))  # To store the loss for each batch in every epoch during training. lwn(train_laoder) = nr of batches
+    log_dloss_tra: Tensor = torch.zeros((args.epochs, len(train_loader)))  # To store the loss for each batch in every epoch during training. lwn(train_laoder) = nr of batches
     log_dice_tra: Tensor = torch.zeros((args.epochs, len(train_loader.dataset), K)) # To store the Dice coefficient for each sample (image) in the training set for each class in every epoch --> nr of training samples
+
     log_loss_val: Tensor = torch.zeros((args.epochs, len(val_loader)))
+    log_dloss_val: Tensor = torch.zeros((args.epochs, len(train_loader)))  # To store the loss for each batch in every epoch during training. lwn(train_laoder) = nr of batches
     log_dice_val: Tensor = torch.zeros((args.epochs, len(val_loader.dataset), K))
     log_3d_dice_tra = torch.zeros((args.epochs, sampleT, K))  # Shape: (epochs, num_patients, K)
     log_3d_dice_val = torch.zeros((args.epochs, sampleV, K))  # Shape: (epochs, num_patients, K)
@@ -167,6 +171,7 @@ def runTraining(args):
                 desc = f">> Training   ({e: 4d})"
                 loader = train_loader
                 log_loss = log_loss_tra
+                log_dloss = log_dloss_tra
                 log_dice = log_dice_tra
                 log_3d_dice = log_3d_dice_tra
             if m == 'val':
@@ -176,6 +181,7 @@ def runTraining(args):
                 desc = f">> Validation ({e: 4d})"
                 loader = val_loader
                 log_loss = log_loss_val
+                log_dloss = log_dloss_val
                 log_dice = log_dice_val
                 log_3d_dice = log_3d_dice_val
             #If we ever get python 3.11, we can change to match and remove the upper two if statements
@@ -234,6 +240,9 @@ def runTraining(args):
                     loss = loss_fn(pred_probs, gt)
                     log_loss[e, i] = loss.item()  # One loss value per batch (averaged in the loss)
 
+                    dloss = dloss_fn(pred_probs, gt)
+                    log_dloss[e, i] = dloss.item() 
+
                     if opt:  # Only for training
                         loss.backward()
                         opt.step()
@@ -250,7 +259,8 @@ def runTraining(args):
                     j += B  # Keep in mind that _in theory_, each batch might have a different size
                     # For the DSC average: do not take the background class (0) into account:
                     postfix_dict: dict[str, str] = {"Dice": f"{log_dice[e, :j, 1:].mean():05.3f}",
-                                                    "Loss": f"{log_loss[e, :i + 1].mean():5.2e}"}
+                                                    "Loss": f"{log_loss[e, :i + 1].mean():5.2e}",
+                                                    "dLoss": f"{log_dloss[e, :i + 1].mean():5.2e}"}
                     if K > 2:
                         postfix_dict |= {f"Dice-{k}": f"{log_dice[e, :j, k].mean():05.3f}"
                                          for k in range(1, K)}
@@ -260,25 +270,27 @@ def runTraining(args):
             all_predictions_tensor = torch.cat(all_predictions, dim=0)
             all_gt_tensor = torch.cat(all_gt_slices, dim=0) 
 
-            if m == 'train':
-                path_to_slices = os.path.join("data", "SEGTHOR", "train", "img")
-            else:
+            if m == 'val':
                 path_to_slices = os.path.join("data", "SEGTHOR", "val", "img")
-            
-            dice_scores_per_patient = volume_dice(all_predictions_tensor, all_gt_tensor, path_to_slices)
-            print(dice_scores_per_patient)
-            for patient_idx, (patient, dice_scores) in enumerate(dice_scores_per_patient.items()):
-                log_3d_dice[e, patient_idx, :] = dice_scores  
+                dice_scores_per_patient = volume_dice(all_predictions_tensor, all_gt_tensor, path_to_slices)
+                print(dice_scores_per_patient)
+                for patient_idx, (patient, dice_scores) in enumerate(dice_scores_per_patient.items()):
+                    log_3d_dice[e, patient_idx, :] = dice_scores  
 
             
 
         # I save it at each epochs, in case the code crashes or I decide to stop it early
         np.save(args.dest / "loss_tra.npy", log_loss_tra)
+        np.save(args.dest / "dloss_tra.npy", log_dloss_tra)
         np.save(args.dest / "dice_tra.npy", log_dice_tra)
+        
         np.save(args.dest / "loss_val.npy", log_loss_val)
+        np.save(args.dest / "dloss_val.npy", log_dloss_val)
         np.save(args.dest / "dice_val.npy", log_dice_val)
+
         np.save(args.dest / "dice3d_tra.npy", log_3d_dice_tra)
         np.save(args.dest / "dice3d_val.npy", log_3d_dice_val)
+        
 
         current_dice: float = log_dice_val[e, :, 1:].mean().item()
         if current_dice > best_dice:
