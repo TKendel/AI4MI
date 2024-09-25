@@ -8,3 +8,6 @@ scikit-image
 matplotlib
 nnunetv2
 git+https://github.com/FabianIsensee/hiddenlayer.git
+opencv-python
+nibabel
+scipy
