@@ -281,12 +281,13 @@ def runTraining(args):
                 dice_scores_per_patient = volume_dice(all_predictions_tensor, all_gt_tensor, path_to_slices)
                 print(dice_scores_per_patient)
                 for patient_idx, (patient, dice_scores) in enumerate(dice_scores_per_patient.items()):
+                    rounded_dice_scores = [float(f"{score:05.3f}") for score in dice_scores]
                     log_3d_dice[e, patient_idx, :] = dice_scores  
 
                 print(f"3d Dice Score (averaged over all patients and classes): {log_3d_dice[e, :, 1:].mean():05.3f}")
                 if K > 2:
                     for k in range(1, K):
-                        print(f"3dDice-{k}: {log_3d_dice[e, :j, k].mean():05.3f}")
+                        print(f"3dDice-{k}: {log_3d_dice[e, :, k].mean():05.3f}")
 
         
         print(log_3d_dice[e, :i + 1].mean())
