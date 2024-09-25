@@ -75,7 +75,8 @@ def setup(args) -> tuple[nn.Module, Any, Any, DataLoader, DataLoader, int]:
     optimizer = torch.optim.Adam(net.parameters(), lr=lr, betas=(0.9, 0.999))
 
     #adding a learning rate scheduler
-    scheduler = lr_scheduler.PolynomialLR(optimizer, total_iters=5, power=1.0)
+    #scheduler = lr_scheduler.PolynomialLR(optimizer, total_iters=5, power=1.0)
+    scheduler = lr_scheduler.CosineAnnealingLR(optimizer, total_iters=5, power=1.0)
 
     # Dataset part
     B: int = datasets_params[args.dataset]['B']
