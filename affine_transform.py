@@ -56,11 +56,11 @@ broken_heart = np.where(broken_np == 2, broken_np, 0) # HEART - MASK 2
 
 
 
-#First rotate, as it is done with a center in volume, not heart
-broken_heart = rotate(broken_heart, angle=-26, reshape=False)   #Rotate matrix #reshape=False makes sure not to enxpand matrix (crop when rotating)
+#First rotate, as it is done at the center of the volume, not heart
+broken_heart = rotate(broken_heart, angle=-26, reshape=False)   #Rotate matrix #reshape=False makes sure not to expand matrix (crop when rotating)
 #https://stackoverflow.com/questions/53171057/numpy-matrix-rotation-for-any-degrees
 
-#Calculate ecludean distance between centers of mass
+#Calculate euclidean distance between centers of mass
 center_ref = center_of_mass(heart_ref)
 center_broken = center_of_mass(broken_heart)
 
