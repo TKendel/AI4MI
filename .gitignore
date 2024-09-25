@@ -8,3 +8,4 @@ bin/
 __pycache__/
 grad_figs/*.png
 data_nnunet/*
+Dataset010_SEGT/*
