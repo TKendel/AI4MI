@@ -118,20 +118,31 @@ def run(args: argparse.Namespace) -> None:
 
     epcs = np.arange(E)
 
+    # Loop to plot individual classes
     for k in range(1, K):
         y = metrics[:, :, k].mean(axis=1)
-        ax.plot(epcs, y, label=f"{k=}", linewidth=1.5)
+        ax.plot(epcs, y, label=f"Class {k}", linewidth=2)  # Increase line width
 
+    # Plot for all classes
     if K > 2:
-        ax.plot(epcs, metrics.mean(axis=1).mean(axis=1), label="All classes", linewidth=3)
-        ax.legend()
+        ax.plot(epcs, metrics.mean(axis=1).mean(axis=1), label="All Classes", linewidth=3, color='purple')
+        ax.legend(fontsize=12, loc="lower right")  # Adjust legend font size and position
     else:
         ax.plot(epcs, metrics.mean(axis=1), linewidth=3)
 
-    fig.tight_layout()
-    if args.dest:
-        fig.savefig(args.dest)
+    # Adding labels and grid
+    ax.set_xlabel("Epochs", fontsize=14)
+    ax.set_ylabel("Dice score", fontsize=14)
+    ax.grid(True, which='both', linestyle='--', linewidth=0.7, alpha=0.6)  # Add grid lines for clarity
 
+    # Adding tighter layout
+    fig.tight_layout()
+
+    # Save the plot if needed
+    if args.dest:
+        fig.savefig(args.dest, dpi=300, bbox_inches='tight')  # Save with high DPI for clarity
+
+    # Show the plot
     if not args.headless:
         plt.show()
     """
