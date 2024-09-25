@@ -154,15 +154,13 @@ def runTraining(args):
     log_loss_val: Tensor = torch.zeros((args.epochs, len(val_loader)))
     log_dloss_val: Tensor = torch.zeros((args.epochs, len(train_loader)))  # To store the loss for each batch in every epoch during training. lwn(train_laoder) = nr of batches
     log_dice_val: Tensor = torch.zeros((args.epochs, len(val_loader.dataset), K))
-    log_3d_dice_tra = torch.zeros((args.epochs, sampleT, K))  # Shape: (epochs, num_patients, K)
     log_3d_dice_val = torch.zeros((args.epochs, sampleV, K))  # Shape: (epochs, num_patients, K)
 
     best_dice: float = 0
 
     for e in range(args.epochs):
         for m in ['train', 'val']:
-            all_predictions = [] # store the predictions each epoch
-            all_gt_slices = [] #store the gts each epoch
+            
             # Because we cannot get python 3.11 running in Snellius, we changed the match cases to if statements
             if m == 'train':
                 net.train()
@@ -173,7 +171,6 @@ def runTraining(args):
                 log_loss = log_loss_tra
                 log_dloss = log_dloss_tra
                 log_dice = log_dice_tra
-                log_3d_dice = log_3d_dice_tra
             if m == 'val':
                 net.eval()
                 opt = None
@@ -184,6 +181,8 @@ def runTraining(args):
                 log_dloss = log_dloss_val
                 log_dice = log_dice_val
                 log_3d_dice = log_3d_dice_val
+                all_predictions = [] # store the predictions each epoch
+                all_gt_slices = [] #store the gts each epoch
             #If we ever get python 3.11, we can change to match and remove the upper two if statements
             """
             match m:
@@ -227,9 +226,10 @@ def runTraining(args):
                     
                     # in order to calculate dice on 3d, we collect all predictions resulting from a single forward pass 
                     # + their corresponding gts
-                    all_predictions.append(pred_seg.cpu())
-                    all_gt_slices.append(gt.cpu())
-                    
+                    if m == 'val':  # Ensure this happens only during validation
+                        all_predictions.append(pred_seg.cpu())
+                        all_gt_slices.append(gt.cpu())
+                        
                     log_dice[e, j:j + B, :] = dice_coef(gt, pred_seg)  # One DSC value per sample and per class
                         # e: The current epoch.
                         # j:j + B: This slices the tensor for the current batch, where:
@@ -276,9 +276,8 @@ def runTraining(args):
                 print(dice_scores_per_patient)
                 for patient_idx, (patient, dice_scores) in enumerate(dice_scores_per_patient.items()):
                     log_3d_dice[e, patient_idx, :] = dice_scores  
-
-            
-
+        
+        print(log_3d_dice[e, :i + 1].mean())
         # I save it at each epochs, in case the code crashes or I decide to stop it early
         np.save(args.dest / "loss_tra.npy", log_loss_tra)
         np.save(args.dest / "dloss_tra.npy", log_dloss_tra)
@@ -288,7 +287,6 @@ def runTraining(args):
         np.save(args.dest / "dloss_val.npy", log_dloss_val)
         np.save(args.dest / "dice_val.npy", log_dice_val)
 
-        np.save(args.dest / "dice3d_tra.npy", log_3d_dice_tra)
         np.save(args.dest / "dice3d_val.npy", log_3d_dice_val)
         
 
