@@ -31,12 +31,22 @@ import matplotlib.pyplot as plt
 
 def run(args: argparse.Namespace) -> None:
     metrics: np.ndarray = np.load(args.metric_file)
+    
+    if metrics.ndim == 2:
+        E, N = metrics.shape
+        K = 1
+    elif metrics.ndim == 3:
+        E, N, K = metrics.shape
+
+    #If we ever get python 3.11, we can change to match and remove the upper two if statements
+    """
     match metrics.ndim:
         case 2:
             E, N = metrics.shape
             K = 1
         case 3:
             E, N, K = metrics.shape
+    """
 
     fig = plt.figure()
     ax = fig.gca()
