@@ -26,6 +26,8 @@
 from torch import einsum
 
 from utils import simplex, sset
+import tensorflow as tf
+from focal_loss import BinaryFocalLoss
 
 
 class CrossEntropy():
@@ -51,3 +53,23 @@ class CrossEntropy():
 class PartialCrossEntropy(CrossEntropy):
     def __init__(self, **kwargs):
         super().__init__(idk=[1], **kwargs)
+
+
+# ==== Focal Loss =======
+# Focal loss: handles the cases where CE loss performs badly, namely
+# 1. When class imbalance inherits bias in the process (majority class examples will dominate the loss function and gradient descent)
+# 2. CE loss fails to distinguish between hard and easy examples. CE loss fails to pay more attention to hard examples
+
+# --> focal loss focuses on the examples that the model gets wrong rather than the ones it can confidentially predict
+# --> ensures that predictions on hard examples improve over time rather than becoming overly cofident with easy ones.
+# Down Weighting: technique that reduces the influence of easy examples on the loss function > pays more attention on hard examples
+# Focal Loss adds a modulating factor to the CE loss.
+
+class BinaryFocalLoss():
+    def __init__(self, gamma=2, alpha=0.25, **kwargs):
+        optimizer= ...,
+        loss=BinaryFocalLoss(gamma=2) # gamma: focusing parameter to be tuned using cross-validation
+        metrics= ...,
+            
+    # todo: tune gamma parameter
+
