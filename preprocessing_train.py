@@ -7,7 +7,7 @@ import os
 # img = cv.imread('data\SEGTHOR\\train\img\Patient_03_0010.png', cv.IMREAD_GRAYSCALE)
 # assert img is not None, "file could not be read!"  # Check if the image was successfully loaded
 
-image_folder = r"C:\Users\mirth\OneDrive\Documenten\Studie AI\Master AI\AI for Medical Imaging\Group Project Medical Imaging\AI4MI\data\SEGTHOR_fixed\train\img"
+image_folder = r"data\SEGTHOR_fixed2\\train\\img"
 
 # List all files in the train folder
 image_files = [f for f in os.listdir(image_folder) if f.endswith('.png')]
@@ -22,17 +22,17 @@ for image_file in image_files:
     assert img is not None, f"Image {image_file} could not be read!"
 
     # Apply median blur (optional, you can skip this if not needed)
-    img_blurred = cv.medianBlur(img, 1)
+    # img_blurred = cv.medianBlur(img, 1)
 
     # === Apply Contrast Enhancement (CLAHE) ===
     clahe = cv.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8)) # clipLimit controls the amount of contrast enhancement
-    img_contrast = clahe.apply(img_blurred)  # Enhance contrast
+    img_contrast = clahe.apply(img)  # Enhance contrast
 
     # === Apply Global Thresholding ===
-    ret, th1 = cv.threshold(img_contrast, 10, 255, cv.THRESH_BINARY)
+    # ret, th1 = cv.threshold(img_contrast, 10, 255, cv.THRESH_BINARY)
 
     # Normalize the image before adding noise (to range [0, 1])
-    img_contrast_normalized = th1.astype(np.float32) / 255.0
+    img_contrast_normalized = img_contrast.astype(np.float32) / 255.0
 
     # === Generate Gaussian noise ===
     # mean = 0
@@ -58,13 +58,13 @@ for image_file in image_files:
     # === Save the preprocessed image (overwriting the original image) ===
     cv.imwrite(image_path, final_img)  # Overwrite the original image with the preprocessed image
 
-    # === Display the original, enhanced, and rotated images ===
-    titles = ['Original Image', 'Final Preprocessed Image'] # final preprocesed image includes median blur, contrast enhancing, global thresholding, normalization and clip the values
-    images = [img, img_contrast]
+    # # === Display the original, enhanced, and rotated images ===
+    # titles = ['Original Image', 'Final Preprocessed Image'] # final preprocesed image includes median blur, contrast enhancing, global thresholding, normalization and clip the values
+    # images = [img, img_contrast]
 
-    for i in range(2):
-        plt.subplot(2, 1, i + 1), plt.imshow(images[i], 'gray')
-        plt.title(titles[i])
-        plt.xticks([]), plt.yticks([])
+    # for i in range(2):
+    #     plt.subplot(2, 1, i + 1), plt.imshow(images[i], 'gray')
+    #     plt.title(titles[i])
+    #     plt.xticks([]), plt.yticks([])
 
-    plt.show()
+    # plt.show()
