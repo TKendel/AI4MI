@@ -317,10 +317,12 @@ def runTraining(args):
                 for patient_idx, (patient, iou_score) in enumerate(iou_scores_per_patient.items()):
                     rounded_iou_scores = [float(f"{score:05.3f}") for score in iou_score]
                     log_3d_IOU[e, patient_idx, :] = rounded_iou_scores  
+                    log_3d_dice[e, patient_idx, :] = torch.tensor(rounded_dice_scores, dtype=log_3d_dice.dtype, device=log_3d_dice.device)
 
                 for patient_idx, (patient, iou_score) in enumerate(iou_scores_per_patient.items()):
                     rounded_iou_scores = [float(f"{score:05.3f}") for score in iou_score]
-                    log_3d_IOU[e, patient_idx, :] = rounded_iou_scores  
+                    log_3d_IOU[e, patient_idx, :] = torch.tensor(rounded_iou_scores, dtype=log_3d_IOU.dtype, device=log_3d_IOU.device)
+
 
                 print(f"3d Dice Score (averaged over all patients and classes): {log_3d_dice[e, :, 1:].mean():05.3f}")
                 print(f"3d IOU Score (averaged over all patients and classes): {log_3d_IOU[e, :, 1:].mean():05.3f}")
@@ -346,6 +348,16 @@ def runTraining(args):
 
         """
         Log metrics (Dice, IoU, Hausdorff) and hyperparameter updates at each epoch.
+        np.save(args.dest / "iou_tra.npy", log_IOU_tra)
+        
+        np.save(args.dest / "loss_val.npy", log_loss_val)
+        np.save(args.dest / "dloss_val.npy", log_dloss_val)
+        np.save(args.dest / "dice_val.npy", log_dice_val)
+        np.save(args.dest / "dice_val.npy", log_dice_val)
+
+        np.save(args.dest / "3ddice_val.npy", log_3d_dice_val)
+        np.save(args.dest / "3dIOU_val.npy", log_3d_IOU_val)
+
         
         dice = dice_coefficient(pred, target)
         iou_val = iou(pred, target)
