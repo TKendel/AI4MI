@@ -158,6 +158,22 @@ def meta_dice(sum_str: str, label: Tensor, pred: Tensor, smooth: float = 1e-8) -
 dice_coef = partial(meta_dice, "bk...->bk") #computes Dice coefficients per image (b dimension) and per class (k dimension).
 dice_batch = partial(meta_dice, "bk...->k")  # used for 3d dice  ## dice_scores will have shape (k,), giving us the Dice coefficient for each class across the entire 3D volume
 
+def meta_iou(sum_str: str, label: Tensor, pred: Tensor, smooth: float = 1e-8) -> Tensor:
+    assert label.shape == pred.shape
+    assert one_hot(label)
+    assert one_hot(pred)
+
+    inter_size: Tensor = einsum(sum_str, [intersection(label, pred)]).type(torch.float32)
+    union_size: Tensor = (einsum(sum_str, [label]) + einsum(sum_str, [pred]) - inter_size).type(torch.float32)
+
+    ious: Tensor = (inter_size + smooth) / (union_size + smooth)
+
+    return ious
+
+
+iou_coef = partial(meta_iou, "bk...->bk") # computes IoU coefficients per image (b dimension) and per class (k dimension).
+iou_batch = partial(meta_dice, "bk...->k")  # used for 3d iou
+
 
 
 def intersection(a: Tensor, b: Tensor) -> Tensor:
