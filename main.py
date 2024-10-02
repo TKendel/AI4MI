@@ -48,8 +48,9 @@ from utils import (Dcm,
                    probs2class,
                    tqdm_,
                    dice_coef,
+                   iou_coef,
                    save_images)
-from metrics import volume_dice
+from metrics import volume_dice, volume_iou
 
 from losses import CrossEntropy, DiceLoss
 
@@ -137,10 +138,8 @@ def setup(args) -> tuple[nn.Module, Any, Any, DataLoader, DataLoader, int]:
 
 def runTraining(args):
     if args.dataset =='SEGTHOR': 
-        sampleT = 30
         sampleV = 10
     elif args.dataset =='TOY':
-        sampleT = 1000
         sampleV = 100
     
     print(f">>> Setting up to train on {args.dataset} with {args.mode}")
@@ -158,11 +157,18 @@ def runTraining(args):
     log_loss_tra: Tensor = torch.zeros((args.epochs, len(train_loader)))  # To store the loss for each batch in every epoch during training. lwn(train_laoder) = nr of batches
     log_dloss_tra: Tensor = torch.zeros((args.epochs, len(train_loader)))  # To store the loss for each batch in every epoch during training. lwn(train_laoder) = nr of batches
     log_dice_tra: Tensor = torch.zeros((args.epochs, len(train_loader.dataset), K)) # To store the Dice coefficient for each sample (image) in the training set for each class in every epoch --> nr of training samples
+    log_IOU_tra: Tensor = torch.zeros((args.epochs, len(train_loader.dataset), K)) 
+
+
 
     log_loss_val: Tensor = torch.zeros((args.epochs, len(val_loader)))
     log_dloss_val: Tensor = torch.zeros((args.epochs, len(train_loader)))  # To store the loss for each batch in every epoch during training. lwn(train_laoder) = nr of batches
     log_dice_val: Tensor = torch.zeros((args.epochs, len(val_loader.dataset), K))
+    log_IOU_val: Tensor = torch.zeros((args.epochs, len(val_loader.dataset), K))
     log_3d_dice_val = torch.zeros((args.epochs, sampleV, K))  # Shape: (epochs, num_patients, K)
+    log_3d_IOU_val = torch.zeros((args.epochs, sampleV, K))  # Shape: (epochs, num_patients, K)
+
+    
 
     best_dice: float = 0
 
@@ -179,6 +185,7 @@ def runTraining(args):
                 log_loss = log_loss_tra
                 log_dloss = log_dloss_tra
                 log_dice = log_dice_tra
+                log_IOU = log_IOU_tra
             if m == 'val':
                 net.eval()
                 opt = None
@@ -188,7 +195,9 @@ def runTraining(args):
                 log_loss = log_loss_val
                 log_dloss = log_dloss_val
                 log_dice = log_dice_val
+                log_IOU = log_IOU_val 
                 log_3d_dice = log_3d_dice_val
+                log_3d_IOU = log_3d_IOU_val
                 all_predictions = [] # store the predictions each epoch
                 all_gt_slices = [] #store the gts each epoch
             #If we ever get python 3.11, we can change to match and remove the upper two if statements
@@ -239,20 +248,21 @@ def runTraining(args):
                         all_gt_slices.append(gt.cpu())
                         
                     log_dice[e, j:j + B, :] = dice_coef(gt, pred_seg)  # One DSC value per sample and per class
-                        # e: The current epoch.
-                        # j:j + B: This slices the tensor for the current batch, where:
-                        # j is the start index for the current batch in the log_dice array.
-                        # j + B is the end index for this batch (B is the batch size, typically 8 in this case).
-                        # --> log_dice.shape = (num_epochs, num_samples, num_classes)
+                    log_IOU[e, j:j + B, :] = iou_coef(gt, pred_seg)  # One iou value per sample and per class
 
+
+                    # cross entropy loss 
                     loss = loss_fn(pred_probs, gt)
                     log_loss[e, i] = loss.item()  # One loss value per batch (averaged in the loss)
 
+                    # dice loss
                     dloss = dloss_fn(pred_probs, gt)
                     log_dloss[e, i] = dloss.item() 
 
+
+                    # make sure to define correct loss function here 
                     if opt:  # Only for training
-                        loss.backward()
+                        dloss.backward()
                         opt.step()
 
                     if m == 'val':
@@ -278,16 +288,26 @@ def runTraining(args):
                 all_predictions_tensor = torch.cat(all_predictions, dim=0)
                 all_gt_tensor = torch.cat(all_gt_slices, dim=0) 
                 path_to_slices = os.path.join("data", "SEGTHOR", "val", "img")
+
+                # calculating the 3d sccores 
                 dice_scores_per_patient = volume_dice(all_predictions_tensor, all_gt_tensor, path_to_slices)
-                print(dice_scores_per_patient)
+                iou_scores_per_patient = volume_iou(all_predictions_tensor, all_gt_tensor, path_to_slices)
+
                 for patient_idx, (patient, dice_scores) in enumerate(dice_scores_per_patient.items()):
                     rounded_dice_scores = [float(f"{score:05.3f}") for score in dice_scores]
                     log_3d_dice[e, patient_idx, :] = rounded_dice_scores  
 
+                for patient_idx, (patient, iou_score) in enumerate(iou_scores_per_patient.items()):
+                    rounded_iou_scores = [float(f"{score:05.3f}") for score in iou_score]
+                    log_3d_IOU[e, patient_idx, :] = rounded_iou_scores  
+
                 print(f"3d Dice Score (averaged over all patients and classes): {log_3d_dice[e, :, 1:].mean():05.3f}")
+                print(f"3d IOU Score (averaged over all patients and classes): {log_3d_IOU[e, :, 1:].mean():05.3f}")
+
                 if K > 2:
                     for k in range(1, K):
                         print(f"3dDice-{k}: {log_3d_dice[e, :, k].mean():05.3f}")
+                        print(f"3d IOU-{k}: {log_3d_IOU[e, :, k].mean():05.3f}")
 
         
         print(log_3d_dice[e, :i + 1].mean())
