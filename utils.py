@@ -172,7 +172,7 @@ def meta_iou(sum_str: str, label: Tensor, pred: Tensor, smooth: float = 1e-8) ->
 
 
 iou_coef = partial(meta_iou, "bk...->bk") # computes IoU coefficients per image (b dimension) and per class (k dimension).
-iou_batch = partial(meta_dice, "bk...->k")  # used for 3d iou
+iou_batch = partial(meta_iou, "bk...->k")  # used for 3d iou
 
 
 

@@ -306,13 +306,17 @@ def runTraining(args):
                 print(f"3d Dice Score (averaged over all patients and classes): {log_3d_dice[e, :, 1:].mean():05.3f}")
                 print(f"3d IOU Score (averaged over all patients and classes): {log_3d_IOU[e, :, 1:].mean():05.3f}")
 
+                # if K > 2:
+                #     for k in range(1, K):
+                #         print(f"3dDice-{k}: {log_3d_dice[e, :, k].mean():05.3f}")
+                #         print(f"3d IOU-{k}: {log_3d_IOU[e, :, k].mean():05.3f}")
+
                 if K > 2:
-                    for k in range(1, K):
-                        print(f"3dDice-{k}: {log_3d_dice[e, :, k].mean():05.3f}")
-                        print(f"3d IOU-{k}: {log_3d_IOU[e, :, k].mean():05.3f}")
+                    postfix_dict |= {f"3dDice-{k}": f"{log_3d_dice[e, :, k].mean():05.3f}" for k in range(1, K)}
+                    postfix_dict |= {f"3dIOU-{k}": f"{log_3d_IOU[e, :, k].mean():05.3f}" for k in range(1, K)}
+                tq_iter.set_postfix(postfix_dict)
 
         
-        print(log_3d_dice[e, :i + 1].mean())
         # I save it at each epochs, in case the code crashes or I decide to stop it early
         np.save(args.dest / "loss_tra.npy", log_loss_tra)
         np.save(args.dest / "dloss_tra.npy", log_dloss_tra)
@@ -345,7 +349,6 @@ def runTraining(args):
             torch.save(net.state_dict(), args.dest / "bestweights.pt")
 
 
-def main():
     parser = argparse.ArgumentParser()
 
     parser.add_argument('--epochs', default=200, type=int)
