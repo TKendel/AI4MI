@@ -7,4 +7,4 @@ pillow
 scikit-image
 matplotlib
 nnunetv2
-unet
+UNet
