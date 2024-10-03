@@ -84,10 +84,10 @@ def volume_iou(predictions, gts, path_to_slices):
     
     for (patient_pred, volumepred), (patient_gt, volumegt) in zip(prediction_patient_volumes.items(), gt_patient_volumes.items()):
         assert patient_pred == patient_gt  # Ensure that we are processing the same patient
-        dicescores = dice_batch(volumegt, volumepred)
+        iou_scores = iou_batch(volumegt, volumepred)
     
         # Store the Dice scores per patient
-        iou_scores_per_patient[patient_pred] = dicescores
+        iou_scores_per_patient[patient_pred] = iou_scores
 
     # Return the dictionary containing Dice scores for each patient
     return iou_scores_per_patient
