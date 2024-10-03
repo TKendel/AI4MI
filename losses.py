@@ -25,7 +25,7 @@
 
 from torch import einsum
 
-from utils import simplex, sset, meta_dice
+from utils import simplex, sset
 
 
 class CrossEntropy():
@@ -106,6 +106,7 @@ class DiceLoss():
     def __init__(self, **kwargs):
         # Self.idk is used to filter out some classes of the target mask. Use fancy indexing
         self.idk = kwargs['idk']
+        self.smooth = 1e-10  # Smoothing factor to avoid division by zero
         print(f"Initialized {self.__class__.__name__} with {kwargs}")
 
     def __call__(self, pred_softmax, target):
@@ -116,12 +117,14 @@ class DiceLoss():
         pred = pred_softmax[:, self.idk, ...].float()
         target = target[:, self.idk, ...].float()
 
-         # Call the meta_dice function for Dice coefficient calculation
-        dice_score = meta_dice('bk...->bk', target, pred)
+        intersection = einsum("bk...,bk...->bk", pred, target)
+        pred_sum = einsum("bk...->bk", pred)
+        target_sum = einsum("bk...->bk", target)
+
+        dice_score = (2. * intersection + self.smooth) / (pred_sum + target_sum + self.smooth)
 
         # Dice Loss is 1 - Dice Coefficient
-        loss = 1 - dice_score.mean()  # averaging across both the batch and class dimensions,
-
+        loss = 1 - dice_score.mean()
 
         return loss
 
