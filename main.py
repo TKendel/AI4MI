@@ -294,17 +294,14 @@ def runTraining(args):
                 dice_scores_per_patient = volume_dice(all_predictions_tensor, all_gt_tensor, path_to_slices)
                 iou_scores_per_patient = volume_iou(all_predictions_tensor, all_gt_tensor, path_to_slices)
 
-                for patient_idx, patient in enumerate(dice_scores_per_patient.keys()):
-                    dice_scores = dice_scores_per_patient[patient]
-                    iou_scores = iou_scores_per_patient[patient]
+                for patient_idx, (patient, dice_scores) in enumerate(dice_scores_per_patient.items()):
+                    rounded_dice_scores = [float(f"{score:05.3f}") for score in dice_scores]
+                    log_3d_dice[e, patient_idx, :] = torch.tensor(rounded_dice_scores, dtype=log_3d_dice.dtype, device=log_3d_dice.device)
 
-                    rounded_dice_scores = torch.tensor([round(score, 3) for score in dice_scores], 
-                                                    dtype=log_3d_dice.dtype, device=log_3d_dice.device)
-                    rounded_iou_scores = torch.tensor([round(score, 3) for score in iou_scores], 
-                                                    dtype=log_3d_IOU.dtype, device=log_3d_IOU.device)
+                for patient_idx, (patient, iou_score) in enumerate(iou_scores_per_patient.items()):
+                    rounded_iou_scores = [float(f"{score:05.3f}") for score in iou_score]
+                    log_3d_IOU[e, patient_idx, :] = torch.tensor(rounded_iou_scores, dtype=log_3d_IOU.dtype, device=log_3d_IOU.device)
 
-                    log_3d_dice[e, patient_idx, :] = rounded_dice_scores
-                    log_3d_IOU[e, patient_idx, :] = rounded_iou_scores
 
                 print(f"3d Dice Score (averaged over all patients and classes): {log_3d_dice[e, :, 1:].mean():05.3f}")
                 print(f"3d IOU Score (averaged over all patients and classes): {log_3d_IOU[e, :, 1:].mean():05.3f}")
