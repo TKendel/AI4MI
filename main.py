@@ -278,13 +278,14 @@ def runTraining(args):
                     j += B  # Keep in mind that _in theory_, each batch might have a different size
                     # For the DSC average: do not take the background class (0) into account:
                     postfix_dict: dict[str, str] = {"Dice": f"{log_dice[e, :j, 1:].mean():05.3f}",
+                                                    "IoU": f"{log_IOU[e, :j, 1:].mean():05.3f}",
                                                     "Loss": f"{log_loss[e, :i + 1].mean():5.2e}",
-                                                    "dLoss": f"{log_dloss[e, :i + 1].mean():5.2e}"}
+                                                    "dLoss": f"{log_dloss[e, :i + 1].mean():5.2e}"
+                                                    }
                     if K > 2:
-                        postfix_dict |= {f"Dice-{k}": f"{log_dice[e, :j, k].mean():05.3f}"
-                                         for k in range(1, K)}
+                        postfix_dict |= {f"Dice-{k}": f"{log_dice[e, :j, k].mean():05.3f}" for k in range(1, K)}
+                        postfix_dict |= {f"IoU-{k}": f"{log_IOU[e, :j, k].mean():05.3f}" for k in range(1, K)}
                     tq_iter.set_postfix(postfix_dict)
-
             if m == 'val':
                 all_predictions_tensor = torch.cat(all_predictions, dim=0)
                 all_gt_tensor = torch.cat(all_gt_slices, dim=0) 
@@ -302,19 +303,13 @@ def runTraining(args):
                     rounded_iou_scores = [float(f"{score:05.3f}") for score in iou_score]
                     log_3d_IOU[e, patient_idx, :] = torch.tensor(rounded_iou_scores, dtype=log_3d_IOU.dtype, device=log_3d_IOU.device)
 
-
-                print(f"3d Dice Score (averaged over all patients and classes): {log_3d_dice[e, :, 1:].mean():05.3f}")
-                print(f"3d IOU Score (averaged over all patients and classes): {log_3d_IOU[e, :, 1:].mean():05.3f}")
-
-                # if K > 2:
-                #     for k in range(1, K):
-                #         print(f"3dDice-{k}: {log_3d_dice[e, :, k].mean():05.3f}")
-                #         print(f"3d IOU-{k}: {log_3d_IOU[e, :, k].mean():05.3f}")
-
-                if K > 2:
-                    postfix_dict |= {f"3dDice-{k}": f"{log_3d_dice[e, :, k].mean():05.3f}" for k in range(1, K)}
-                    postfix_dict |= {f"3dIOU-{k}": f"{log_3d_IOU[e, :, k].mean():05.3f}" for k in range(1, K)}
-                tq_iter.set_postfix(postfix_dict)
+                for metric_name, log_metric in [("3dDice", log_3d_dice), ("3dIOU", log_3d_IOU)]:
+                    print(f"{metric_name}: {log_metric[e, :, 1:].mean():05.3f}\t", end='')
+                    if K > 2:
+                        for k in range(1, K):
+                            print(f"{metric_name}-{k}: {log_metric[e, :, k].mean():05.3f}\t", end='')
+                    print()
+ 
 
         
         # I save it at each epochs, in case the code crashes or I decide to stop it early
@@ -349,6 +344,7 @@ def runTraining(args):
             torch.save(net.state_dict(), args.dest / "bestweights.pt")
 
 
+def main():
     parser = argparse.ArgumentParser()
 
     parser.add_argument('--epochs', default=200, type=int)
