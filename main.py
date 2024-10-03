@@ -150,6 +150,7 @@ def runTraining(args):
         dloss_fn = DiceLoss(idk=list(range(K)))  # Supervise both background and foreground
     elif args.mode in ["partial"] and args.dataset in ['SEGTHOR', 'SEGTHOR_STUDENTS']:
         loss_fn = CrossEntropy(idk=[0, 1, 3, 4])  # Do not supervise the heart (class 2)
+        dloss_fn = DiceLoss(idk=[0, 1, 3, 4])  # Do not supervise the heart (class 2)
     else:
         raise ValueError(args.mode, args.dataset)
 
@@ -293,14 +294,17 @@ def runTraining(args):
                 dice_scores_per_patient = volume_dice(all_predictions_tensor, all_gt_tensor, path_to_slices)
                 iou_scores_per_patient = volume_iou(all_predictions_tensor, all_gt_tensor, path_to_slices)
 
-                for patient_idx, (patient, dice_scores) in enumerate(dice_scores_per_patient.items()):
-                    rounded_dice_scores = [float(f"{score:05.3f}") for score in dice_scores]
-                    log_3d_dice[e, patient_idx, :] = torch.tensor(rounded_dice_scores, dtype=log_3d_dice.dtype, device=log_3d_dice.device)
+                for patient_idx, patient in enumerate(dice_scores_per_patient.keys()):
+                    dice_scores = dice_scores_per_patient[patient]
+                    iou_scores = iou_scores_per_patient[patient]
 
-                for patient_idx, (patient, iou_score) in enumerate(iou_scores_per_patient.items()):
-                    rounded_iou_scores = [float(f"{score:05.3f}") for score in iou_score]
-                    log_3d_IOU[e, patient_idx, :] = torch.tensor(rounded_iou_scores, dtype=log_3d_IOU.dtype, device=log_3d_IOU.device)
+                    rounded_dice_scores = torch.tensor([round(score, 3) for score in dice_scores], 
+                                                    dtype=log_3d_dice.dtype, device=log_3d_dice.device)
+                    rounded_iou_scores = torch.tensor([round(score, 3) for score in iou_scores], 
+                                                    dtype=log_3d_IOU.dtype, device=log_3d_IOU.device)
 
+                    log_3d_dice[e, patient_idx, :] = rounded_dice_scores
+                    log_3d_IOU[e, patient_idx, :] = rounded_iou_scores
 
                 print(f"3d Dice Score (averaged over all patients and classes): {log_3d_dice[e, :, 1:].mean():05.3f}")
                 print(f"3d IOU Score (averaged over all patients and classes): {log_3d_IOU[e, :, 1:].mean():05.3f}")
@@ -321,7 +325,7 @@ def runTraining(args):
         np.save(args.dest / "loss_val.npy", log_loss_val)
         np.save(args.dest / "dloss_val.npy", log_dloss_val)
         np.save(args.dest / "dice_val.npy", log_dice_val)
-        np.save(args.dest / "dice_val.npy", log_dice_val)
+        np.save(args.dest / "iou_val.npy", log_IOU_val)
 
         np.save(args.dest / "3ddice_val.npy", log_3d_dice_val)
         np.save(args.dest / "3dIOU_val.npy", log_3d_IOU_val)
