@@ -11,3 +11,4 @@ data_nnunet/*
 Dataset010_SEGT/*
 nnunet
 nnunetv2/documentation/*
+data_test/*
