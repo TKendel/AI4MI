@@ -41,7 +41,7 @@ import torch.optim.lr_scheduler as lr_scheduler #learning rate scheduler
 from dataset import SliceDataset
 from ShallowNet import shallowCNN
 from ENet import ENet
-import UNet
+from UNet import UNet
 from utils import (Dcm,
                    class2one_hot,
                    probs2one_hot,
