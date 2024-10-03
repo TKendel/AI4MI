@@ -9,3 +9,5 @@ __pycache__/
 grad_figs/*.png
 data_nnunet/*
 Dataset010_SEGT/*
+nnunet
+nnunetv2/documentation/*
