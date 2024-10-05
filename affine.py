@@ -82,10 +82,12 @@ for root, dirs, files in os.walk(new_dir):
             shifted_heart = affine_transform(heart_segmentation, INV[:3, :3], offset=INV[:3, 3])
             shifted_heart = np.round(shifted_heart).astype(np.uint8)  # Ensure binary mask
 
+
             transformed_data = np.copy(gt)
             transformed_data[gt == 2] = 0  # Remove original heart
             transformed_data[shifted_heart == 1] = 2  # Replace with transformed heart
 
+            transformed_data = transformed_data.astype(np.uint8)
             aligned_img = nib.Nifti1Image(transformed_data, affine=original_affine)
             nib.save(aligned_img, gt_path)
             print(f"Saved transformed GT for {file} at {gt_path}")
