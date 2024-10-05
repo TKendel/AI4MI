@@ -24,8 +24,21 @@
 
 import numpy as np
 from numpy import pi as π
+import nibabel as nib
+from scipy.ndimage import affine_transform  # To apply affine matrix
+import os
+import shutil
+
+original_dir = "./data/OLD DATA/segthor_train_og"
+new_dir = "./data/segthor_train"  ### MAKE SURE YOU RENAME THE OLD (ORIGINAL DATA) BECAUSE IT WILL BE OVERWRITTEN
+
+if not os.path.exists(new_dir):
+    shutil.copytree(original_dir, new_dir)
+    print(f"Copied {original_dir} to {new_dir}")
 
 
+
+# given transformation
 TR = np.asarray([[1, 0, 0, 50],
                  [0,  1, 0, 40],  # noqa: E241
                  [0,             0,      1, 15],  # noqa: E241
@@ -53,3 +66,30 @@ print(f"{AFF=}")
 print(f"{RO=}")
 print(f"{AFF=}")
 print(f"{INV=}")
+
+for root, dirs, files in os.walk(new_dir):
+    for file in files:
+        if file.endswith("GT.nii.gz"):  # Process only GT files
+            gt_path = os.path.join(root, file)
+            print(f"Processing {gt_path}...")
+
+            img = nib.load(gt_path)
+            gt = img.get_fdata()
+            original_affine = img.affine
+
+            heart_segmentation = (gt == 2).astype(np.uint8)  # Binary mask for heart
+
+            shifted_heart = affine_transform(heart_segmentation, INV[:3, :3], offset=INV[:3, 3])
+            shifted_heart = np.round(shifted_heart).astype(np.uint8)  # Ensure binary mask
+
+            transformed_data = np.copy(gt)
+            transformed_data[gt == 2] = 0  # Remove original heart
+            transformed_data[shifted_heart == 1] = 2  # Replace with transformed heart
+
+            aligned_img = nib.Nifti1Image(transformed_data, affine=original_affine)
+            nib.save(aligned_img, gt_path)
+            print(f"Saved transformed GT for {file} at {gt_path}")
+
+
+
+
