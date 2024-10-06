@@ -50,7 +50,7 @@ from utils import (Dcm,
                    dice_coef,
                    iou_coef,
                    save_images)
-from metrics import volume_dice, volume_iou
+from metrics import volume_dice, volume_iou, volume_hausdorff
 
 from losses import CrossEntropy, DiceLoss
 
@@ -176,8 +176,7 @@ def runTraining(args):
     log_IOU_val: Tensor = torch.zeros((args.epochs, len(val_loader.dataset), K))
     log_3d_dice_val = torch.zeros((args.epochs, sampleV, K))  # Shape: (epochs, num_patients, K)
     log_3d_IOU_val = torch.zeros((args.epochs, sampleV, K))  # Shape: (epochs, num_patients, K)
-
-    
+    log_hausdorff_val = torch.zeros((args.epochs, sampleV, K))  # Shape: (epochs, num_patients, K)
 
     best_dice: float = 0
 
@@ -211,6 +210,8 @@ def runTraining(args):
                 log_IOU = log_IOU_val 
                 log_3d_dice = log_3d_dice_val
                 log_3d_IOU = log_3d_IOU_val
+                log_hausdorff = log_hausdorff_val
+
                 all_predictions = [] # store the predictions each epoch
                 all_gt_slices = [] #store the gts each epoch
             #If we ever get python 3.11, we can change to match and remove the upper two if statements
@@ -275,7 +276,7 @@ def runTraining(args):
 
                     # make sure to define correct loss function here 
                     if opt:  # Only for training
-                        loss.backward() #todo focal: change to floss
+                        loss.backward()
                         opt.step()
 
 
@@ -301,13 +302,16 @@ def runTraining(args):
                     tq_iter.set_postfix(postfix_dict)
             if m == 'val':
                 all_predictions_tensor = torch.cat(all_predictions, dim=0)
+                # print("shape all_predictions_tensor", all_predictions_tensor.shape)
                 all_gt_tensor = torch.cat(all_gt_slices, dim=0) 
+                # print("shape all_gt_tensor", all_gt_tensor.shape)
                 path_to_slices = os.path.join("data", "SEGTHOR", "val", "img")
 
                 # calculating the 3d sccores 
                 dice_scores_per_patient = volume_dice(all_predictions_tensor, all_gt_tensor, path_to_slices)
                 iou_scores_per_patient = volume_iou(all_predictions_tensor, all_gt_tensor, path_to_slices)
-
+                haudsdorff_per_patient = volume_hausdorff(all_predictions_tensor, all_gt_tensor, path_to_slices, K)
+                
                 for patient_idx, (patient, dice_scores) in enumerate(dice_scores_per_patient.items()):
                     rounded_dice_scores = [float(f"{score:05.3f}") for score in dice_scores]
                     log_3d_dice[e, patient_idx, :] = torch.tensor(rounded_dice_scores, dtype=log_3d_dice.dtype, device=log_3d_dice.device)
@@ -316,15 +320,17 @@ def runTraining(args):
                     rounded_iou_scores = [float(f"{score:05.3f}") for score in iou_score]
                     log_3d_IOU[e, patient_idx, :] = torch.tensor(rounded_iou_scores, dtype=log_3d_IOU.dtype, device=log_3d_IOU.device)
 
-                for metric_name, log_metric in [("3dDice", log_3d_dice), ("3dIOU", log_3d_IOU)]:
-                    print(f"{metric_name}: {log_metric[e, :, 1:].mean():05.3f}\t", end='')
+                for patient_idx, (patient, hausdorff) in enumerate(hausdorff_per_patient.items()):
+                    rounded_hd_scores = [float(f"{score:05.3f}") for score in hausdorff]
+                    log_hausdorff[e, patient_idx, :] = torch.tensor(rounded_hd_scores, dtype=log_hausdorff.dtype, device=log_hausdorff.device)
+
+                for metric_name, log_metric in [("3dDice", log_3d_dice), ("3dIOU", log_3d_IOU), ("Hausdorff", log_hausdorff)]:
+                    print(f"{metric_name}: {log_metric[e, :, 1:].mean():05.3f}\t", end='')  #exclude background from mean
                     if K > 2:
                         for k in range(1, K):
-                            print(f"{metric_name}-{k}: {log_metric[e, :, k].mean():05.3f}\t", end='')
+                            print(f"{metric_name}-{k}: {log_metric[e, :, k].mean():05.3f}\t", end='')   #print haussdorf for all organs 
                     print()
  
-
-        
         # I save it at each epochs, in case the code crashes or I decide to stop it early
         np.save(args.dest / "loss_tra.npy", log_loss_tra)
         np.save(args.dest / "dloss_tra.npy", log_dloss_tra)

@@ -209,13 +209,14 @@ def count_slices_per_patient(image_dir):
     """
     slices_per_patient = defaultdict(int)
 
-    for filename in os.listdir(image_dir):
+    for filename in sorted(os.listdir(image_dir)):
         if filename.lower().endswith(".png"):
             # Assuming the format is like "Patient_03_000.png"
             patient_id = '_'.join(filename.split('_')[:2])
             slices_per_patient[patient_id] += 1
 
     return slices_per_patient
+
 
 
 
