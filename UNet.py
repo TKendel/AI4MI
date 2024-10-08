@@ -75,7 +75,14 @@ class UNet3D(nn.Module):
 
         # Decoder
         xu1 = self.upconv1(xe52)
-        xu11 = torch.cat([xu1, xe42], dim=1)  # Concatenates 512 from upconv1 and 512 from xe42
+        #xu1 = self.upconv1(xe52)  # Upsample
+        print(f"Shape of xu1 (after upconv1): {xu1.shape}")  # Print shape for debugging
+        print(f"Shape of xe42 (encoder skip connection): {xe42.shape}")  # Print shape for debugging
+
+        xu11 = torch.cat([xu1, xe42], dim=1)  # Concatenate skip connection from encoder
+        print(f"Shape of concatenated tensor xu11: {xu11.shape}")  # Should be [batch_size, 1024, depth, height, width]
+
+        #xu11 = torch.cat([xu1, xe42], dim=1)  # Concatenates 512 from upconv1 and 512 from xe42
         xd11 = relu(self.d11(xu11))
         xd12 = relu(self.d12(xd11))
 
