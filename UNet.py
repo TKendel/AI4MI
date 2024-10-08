@@ -10,7 +10,7 @@ class UNet3D(nn.Module):
         self.binary = binary  # If True, this will be binary segmentation (sigmoid), else multi-class (softmax)
         
         # Encoder
-        self.e11 = nn.Conv3d(1, 64, kernel_size=3, padding=1)  # Input channels changed from 2D to 3D
+        self.e11 = nn.Conv3d(8, 64, kernel_size=3, padding=1)  # Input channels changed from 2D to 3D
         self.e12 = nn.Conv3d(64, 64, kernel_size=3, padding=1)
         self.pool1 = nn.MaxPool3d(kernel_size=2, stride=2)
 
