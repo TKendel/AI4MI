@@ -287,29 +287,32 @@ def runTraining(args):
                         postfix_dict |= {f"Dice-{k}": f"{log_dice[e, :j, k].mean():05.3f}" for k in range(1, K)}
                         postfix_dict |= {f"IoU-{k}": f"{log_IOU[e, :j, k].mean():05.3f}" for k in range(1, K)}
                     tq_iter.set_postfix(postfix_dict)
+            
             if m == 'val':
                 all_predictions_tensor = torch.cat(all_predictions, dim=0)
-                # print("shape all_predictions_tensor", all_predictions_tensor.shape)
                 all_gt_tensor = torch.cat(all_gt_slices, dim=0) 
-                # print("shape all_gt_tensor", all_gt_tensor.shape)
                 path_to_slices = os.path.join("data", "SEGTHOR", "val", "img")
 
                 # calculating the 3d sccores 
                 dice_scores_per_patient = volume_dice(all_predictions_tensor, all_gt_tensor, path_to_slices)
                 iou_scores_per_patient = volume_iou(all_predictions_tensor, all_gt_tensor, path_to_slices)
-                hausdorff_per_patient = volume_hausdorff(all_predictions_tensor, all_gt_tensor, path_to_slices, K)
+                #hausdorff_per_patient = volume_hausdorff(all_predictions_tensor, all_gt_tensor, path_to_slices, K)
                 
-                for patient_idx, (patient, dice_scores) in enumerate(dice_scores_per_patient.items()):
-                    rounded_dice_scores = [float(f"{score:05.3f}") for score in dice_scores]
-                    log_3d_dice[e, patient_idx, :] = torch.tensor(rounded_dice_scores, dtype=log_3d_dice.dtype, device=log_3d_dice.device)
+                dice_results = np.zeros((sampleV, K))
+                iou_results = np.zeros((sampleV, K))
+                #hausdorff_results = np.zeros((sampleV, K))
 
-                for patient_idx, (patient, iou_score) in enumerate(iou_scores_per_patient.items()):
-                    rounded_iou_scores = [float(f"{score:05.3f}") for score in iou_score]
-                    log_3d_IOU[e, patient_idx, :] = torch.tensor(rounded_iou_scores, dtype=log_3d_IOU.dtype, device=log_3d_IOU.device)
+                assert dice_scores_per_patient.keys() == iou_scores_per_patient.keys() #== hausdorff_per_patient.keys()
+                for patient_idx, patient in enumerate(dice_scores_per_patient.keys()):
+                    dice_results[patient_idx, :] = np.round(np.asarray(dice_scores_per_patient[patient]), 3)
+                    iou_results[patient_idx, :] = np.round(np.asarray(iou_scores_per_patient[patient]), 3)
+                    #hausdorff_results[patient_idx, :] = np.round(np.asarray(hausdorff_per_patient[patient]), 3)
 
-                for patient_idx, (patient, hausdorff) in enumerate(hausdorff_per_patient.items()):
-                    rounded_hd_scores = [float(f"{score:05.3f}") for score in hausdorff]
-                    log_hausdorff[e, patient_idx, :] = torch.tensor(rounded_hd_scores, dtype=log_hausdorff.dtype, device=log_hausdorff.device)
+                # Convert to tensors once after collecting all results
+                log_3d_dice[e, :, :] = torch.tensor(dice_results, dtype=log_3d_dice.dtype, device=log_3d_dice.device)
+                log_3d_IOU[e, :, :] = torch.tensor(iou_results, dtype=log_3d_IOU.dtype, device=log_3d_IOU.device)
+                #log_hausdorff[e, :, :] = torch.tensor(hausdorff_results, dtype=log_hausdorff.dtype, device=log_hausdorff.device)
+
 
                 for metric_name, log_metric in [("3dDice", log_3d_dice), ("3dIOU", log_3d_IOU), ("Hausdorff", log_hausdorff)]:
                     print(f"{metric_name}: {log_metric[e, :, 1:].mean():05.3f}\t", end='')  #exclude background from mean
