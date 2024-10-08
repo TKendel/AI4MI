@@ -207,3 +207,25 @@ def runTraining(args):
 
 def main():
     parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument('--epochs', default=200, type=int)
+    parser.add_argument('--dataset', default='TOY2', choices=datasets_params.keys())
+    parser.add_argument('--mode', default='full', choices=['partial', 'full'])
+    parser.add_argument('--dest', type=Path, required=True,
+                        help="Destination directory to save the results (predictions and weights).")
+
+    parser.add_argument('--num_workers', type=int, default=0)
+    parser.add_argument('--gpu', action='store_true')
+    parser.add_argument('--debug', action='store_true',
+                        help="Keep only a fraction (10 samples) of the datasets, "
+                             "to test the logic around epochs and logging easily.")
+
+    args = parser.parse_args()
+
+    pprint(args)
+
+    runTraining(args)
+
+if __name__ == '__main__':
+    main()
