@@ -44,7 +44,7 @@ from torch.nn.functional import relu
 from dataset import SliceDataset
 from ShallowNet import shallowCNN
 from ENet import ENet
-from UNet import UNet
+from UNet import UNet3D
 from utils import (Dcm,
                    class2one_hot,
                    probs2one_hot,
