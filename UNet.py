@@ -12,19 +12,19 @@ class UNet3D(nn.Module):
         # Encoder
         self.e11 = nn.Conv3d(8, 64, kernel_size=3, padding=1)  # Input channels changed from 2D to 3D
         self.e12 = nn.Conv3d(64, 64, kernel_size=3, padding=1)
-        self.pool1 = nn.MaxPool3d(kernel_size=2, stride=2)
+        self.pool1 = nn.MaxPool3d(kernel_size=(1, 2, 2), stride=(1, 2, 2))
 
         self.e21 = nn.Conv3d(64, 128, kernel_size=3, padding=1)
         self.e22 = nn.Conv3d(128, 128, kernel_size=3, padding=1)
-        self.pool2 = nn.MaxPool3d(kernel_size=2, stride=2)
+        self.pool2 = nn.MaxPool3d(kernel_size=(1, 2, 2), stride=(1, 2, 2))
 
         self.e31 = nn.Conv3d(128, 256, kernel_size=3, padding=1)
         self.e32 = nn.Conv3d(256, 256, kernel_size=3, padding=1)
-        self.pool3 = nn.MaxPool3d(kernel_size=2, stride=2)
+        self.pool3 = nn.MaxPool3d(kernel_size=(1, 2, 2), stride=(1, 2, 2))
 
         self.e41 = nn.Conv3d(256, 512, kernel_size=3, padding=1)
         self.e42 = nn.Conv3d(512, 512, kernel_size=3, padding=1)
-        self.pool4 = nn.MaxPool3d(kernel_size=2, stride=2)
+        self.pool4 = nn.MaxPool3d(kernel_size=(1, 2, 2), stride=(1, 2, 2))
 
         self.e51 = nn.Conv3d(512, 1024, kernel_size=3, padding=1)
         self.e52 = nn.Conv3d(1024, 1024, kernel_size=3, padding=1)
