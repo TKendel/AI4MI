@@ -37,6 +37,9 @@ from torch import nn, Tensor
 from torchvision import transforms
 from torch.utils.data import DataLoader
 import torch.optim.lr_scheduler as lr_scheduler #learning rate scheduler 
+import torch.nn as nn
+from torchvision import models
+from torch.nn.functional import relu
 
 from dataset import SliceDataset
 from ShallowNet import shallowCNN
@@ -60,28 +63,91 @@ datasets_params["TOY2"] = {'K': 2, 'net': shallowCNN, 'B': 2}
 datasets_params["SEGTHOR"] = {'K': 5, 'net': UNet, 'B': 8}
 
 
+# def setup(args) -> tuple[nn.Module, Any, Any, DataLoader, DataLoader, int]:
+#     # Networks and scheduler
+#     gpu: bool = args.gpu and torch.cuda.is_available()
+#     device = torch.device("cuda") if gpu else torch.device("cpu")
+#     print(f">> Picked {device} to run experiments")
+
+#     K: int = datasets_params[args.dataset]['K']
+#     net = datasets_params[args.dataset]['net'](1, K)
+#     net.init_weights()
+#     net.to(device)
+
+#    #learning rate & adam optimizer
+#     lr = 0.0005
+#     optimizer = torch.optim.Adam(net.parameters(), lr=lr, betas=(0.9, 0.999))
+#     #optimizer = torch.optim.AdamW(net.parameters(), lr=lr, betas=(0.9, 0.999), weight_decay=0.01)
+
+#     #adding a learning rate scheduler
+#     #scheduler = lr_scheduler.PolynomialLR(optimizer, total_iters=5, power=1.0)
+#     #scheduler = lr_scheduler.CosineAnnealingLR(optimizer, T_max=5)
+#     #scheduler = lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.1, patience=10, verbose=True)
+
+#     # Dataset part
+#     B: int = datasets_params[args.dataset]['B']
+#     root_dir = Path("data") / args.dataset
+
+#     img_transform = transforms.Compose([
+#         lambda img: img.convert('L'),
+#         lambda img: np.array(img)[np.newaxis, ...],
+#         lambda nd: nd / 255,  # max <= 1
+#         lambda nd: torch.tensor(nd, dtype=torch.float32)
+#     ])
+
+#     gt_transform = transforms.Compose([
+#         lambda img: np.array(img)[...],
+#         # The idea is that the classes are mapped to {0, 255} for binary cases
+#         # {0, 85, 170, 255} for 4 classes
+#         # {0, 51, 102, 153, 204, 255} for 6 classes
+#         # Very sketchy but that works here and that simplifies visualization
+#         lambda nd: nd / (255 / (K - 1)) if K != 5 else nd / 63,  # max <= 1
+#         lambda nd: torch.tensor(nd, dtype=torch.int64)[None, ...],  # Add one dimension to simulate batch
+#         lambda t: class2one_hot(t, K=K),
+#         itemgetter(0)
+#     ])
+
+#     train_set = SliceDataset('train',
+#                              root_dir,
+#                              img_transform=img_transform,
+#                              gt_transform=gt_transform,
+#                              debug=args.debug)
+#     train_loader = DataLoader(train_set,
+#                               batch_size=B,
+#                               num_workers=args.num_workers,
+#                               shuffle=True)
+
+#     val_set = SliceDataset('val',
+#                            root_dir,
+#                            img_transform=img_transform,
+#                            gt_transform=gt_transform,
+#                            debug=args.debug)
+#     val_loader = DataLoader(val_set,
+#                             batch_size=B,
+#                             num_workers=args.num_workers,
+#                             shuffle=False)
+
+#     args.dest.mkdir(parents=True, exist_ok=True)
+
+#     return (net, optimizer, device, train_loader, val_loader, K)
 def setup(args) -> tuple[nn.Module, Any, Any, DataLoader, DataLoader, int]:
-    # Networks and scheduler
     gpu: bool = args.gpu and torch.cuda.is_available()
     device = torch.device("cuda") if gpu else torch.device("cpu")
     print(f">> Picked {device} to run experiments")
 
-    K: int = datasets_params[args.dataset]['K']
-    net = datasets_params[args.dataset]['net'](1, K)
-    net.init_weights()
+    K: int = datasets_params[args.dataset]['K']  # Number of classes
+    binary = (K == 1)  # Set binary segmentation if only 1 class (binary task)
+    
+    # Create the network
+    net = datasets_params[args.dataset]['net'](n_class=K, use_batchnorm=True, binary=binary)
+    
     net.to(device)
 
-   #learning rate & adam optimizer
+    # Initialize optimizer
     lr = 0.0005
     optimizer = torch.optim.Adam(net.parameters(), lr=lr, betas=(0.9, 0.999))
-    #optimizer = torch.optim.AdamW(net.parameters(), lr=lr, betas=(0.9, 0.999), weight_decay=0.01)
 
-    #adding a learning rate scheduler
-    #scheduler = lr_scheduler.PolynomialLR(optimizer, total_iters=5, power=1.0)
-    #scheduler = lr_scheduler.CosineAnnealingLR(optimizer, T_max=5)
-    #scheduler = lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.1, patience=10, verbose=True)
-
-    # Dataset part
+    # Dataset part (keeping the existing logic)
     B: int = datasets_params[args.dataset]['B']
     root_dir = Path("data") / args.dataset
 
@@ -94,10 +160,6 @@ def setup(args) -> tuple[nn.Module, Any, Any, DataLoader, DataLoader, int]:
 
     gt_transform = transforms.Compose([
         lambda img: np.array(img)[...],
-        # The idea is that the classes are mapped to {0, 255} for binary cases
-        # {0, 85, 170, 255} for 4 classes
-        # {0, 51, 102, 153, 204, 255} for 6 classes
-        # Very sketchy but that works here and that simplifies visualization
         lambda nd: nd / (255 / (K - 1)) if K != 5 else nd / 63,  # max <= 1
         lambda nd: torch.tensor(nd, dtype=torch.int64)[None, ...],  # Add one dimension to simulate batch
         lambda t: class2one_hot(t, K=K),
@@ -126,7 +188,7 @@ def setup(args) -> tuple[nn.Module, Any, Any, DataLoader, DataLoader, int]:
 
     args.dest.mkdir(parents=True, exist_ok=True)
 
-    return (net, optimizer, device, train_loader, val_loader, K)
+    return net, optimizer, device, train_loader, val_loader, K
 
 
 def runTraining(args):
