@@ -64,7 +64,7 @@ def volume_hausdorff(predictions, gts, path_to_slices, K, hd_95=False):
         patient_hd = []
 
         # split sgementations by class to caluclate the haussdorf per organ
-        for class_idx in range(5):
+        for class_idx in range(1, K):
             pred_volume = volumepred[:, class_idx, :, :]
             gt_volume = volumegt[:, class_idx, :, :]
 
@@ -73,20 +73,23 @@ def volume_hausdorff(predictions, gts, path_to_slices, K, hd_95=False):
 
             # will return a list of coordinates, where each coordinate 
             #has the format [slice_index, row_index, column_index]
-            pred_boundary = np.argwhere(pred_volume.cpu().numpy())
-            gt_boundary = np.argwhere(gt_volume.cpu().numpy())
+            pred_boundary = np.argwhere(pred_volume.numpy())
+            gt_boundary = np.argwhere(gt_volume.numpy())
 
-            if pred_boundary.size > 0 and gt_boundary.size > 0:
+            if pred_boundary.size == 0 and gt_boundary.size == 0:
+                hausdorff_distance_class = 0.0
+            elif pred_boundary.size > 0 and gt_boundary.size > 0:
                 if hd_95:
                     # compute pairwise distances 
                     distances_pred_to_gt = cdist(pred_boundary, gt_boundary, 'euclidean')
                     distances_gt_to_pred = cdist(gt_boundary, pred_boundary, 'euclidean')
 
-                    # retrieve minimum distance 
-                    min_distances_pred_to_gt = np.min(distances_pred_to_gt, axis=1)
+                    # retrieve minimum distance - for each point in the predicted boundary, it finds the nearest point in the ground truth boundary.
+                    min_distances_pred_to_gt = np.min(distances_pred_to_gt, axis=1)  
                     min_distances_gt_to_pred = np.min(distances_gt_to_pred, axis=1)
 
                     # calculate the 95th percentile of the minimum distances
+                    # --> finds a distance such that 95% of the minimum distances from predicted points to ground truth points are less than or equal to this value.
                     hd95_pred_to_gt = np.percentile(min_distances_pred_to_gt, 95)
                     hd95_gt_to_pred = np.percentile(min_distances_gt_to_pred, 95)
 
@@ -100,5 +103,75 @@ def volume_hausdorff(predictions, gts, path_to_slices, K, hd_95=False):
                 hausdorff_distance_class = np.nan  # Handle cases where one volume is empty (no segmentation)
             
             patient_hd.append(hausdorff_distance_class)
+        print("patient_hd", patient_hd)
         hausdorff_per_patient[patient_pred] = torch.tensor(patient_hd, dtype=torch.float32)
+    return hausdorff_per_patient
+
+
+def slicehausdorff(predictions, gts, path_to_slices, K):
+    
+    prediction_patient_volumes, gt_patient_volumes = return_volumes(predictions, gts, path_to_slices)
+    hausdorff_per_patient = {}
+    for (patient_pred, volumepred), (patient_gt, volumegt) in zip(prediction_patient_volumes.items(), gt_patient_volumes.items()):
+        # both volumepred and volume gt have the shape [nr slices, 5, 256, 256]
+        H, W = volumepred.shape[2], volumepred.shape[3]
+        max_distance = np.sqrt(H**2 + W**2) 
+        
+        assert patient_pred == patient_gt
+        patient_hd = []
+        total_inf_count = 0  
+        total_zero_count = 0 
+        # Loop over each class (organ)
+        for class_idx in range(1,K):
+            organ_hd = []
+            inf_count = 0
+            zero_count = 0
+            pred_volume = volumepred[:, class_idx, :, :]  # Extract the prediction for each organ across slices
+            gt_volume = volumegt[:, class_idx, :, :]      # Extract the ground truth for each organ across slices
+            # Loop over each slice
+            for slice_idx in range(pred_volume.shape[0]):
+                pred_slice = pred_volume[slice_idx, :, :]
+                gt_slice = gt_volume[slice_idx, :, :]
+                sum_pred = torch.sum(pred_slice)
+                sum_gt = torch.sum(gt_slice)
+
+                # Extract boundary points (non-zero elements)
+                pred_points = np.argwhere(pred_slice.numpy())
+                gt_points = np.argwhere(gt_slice.numpy())
+                #print(pred_points.shape)
+
+                # Verify the sum and shape match
+                assert sum_pred.item() == pred_points.shape[0], "Mismatch in pred_slice: sum and shape don't match"
+                assert sum_gt.item() == gt_points.shape[0], "Mismatch in gt_slice: sum and shape don't match"
+            
+
+                if pred_points.shape[0] == 0 and gt_points.shape[0] == 0:
+                    #print(f"Both pred_slice and gt_slice are empty for slice {slice_idx}")
+                    hd = 0
+                    zero_count += 1
+                elif pred_points.shape[0] == 0 or gt_points.shape[0] == 0:
+                    #print(f"One of pred_slice or gt_slice is empty for slice {slice_idx}")
+                    hd = np.inf
+                    inf_count += 1
+
+                else:
+                    assert pred_points.shape[1] == 2, f"Error: pred_points has incorrect shape {pred_points.shape}"
+                    assert gt_points.shape[1] == 2, f"Error: gt_points has incorrect shape {gt_points.shape}"
+
+                    #print(f"Calculating Hausdorff distance for Class {class_idx}, Slice {slice_idx}")
+                    hd_forward = directed_hausdorff(pred_points, gt_points)[0]
+                    hd_reverse = directed_hausdorff(gt_points, pred_points)[0]
+                    hd = max(hd_forward, hd_reverse)
+                
+                organ_hd.append(hd)
+        
+            #print(f"Patient {patient_pred}, Organ {class_idx}: {zero_count} slices set to 0, {inf_count} slices set to inf.")
+            total_inf_count += inf_count
+            total_zero_count += zero_count
+            patient_hd.append(max(organ_hd))
+
+        # Take the maximum Hausdorff distance for this patient
+        print(f"Patient {patient_pred}: Total {total_zero_count} slices set to 0, {total_inf_count} slices set to inf.")
+        hausdorff_per_patient[patient_pred] = torch.tensor(patient_hd)
+
     return hausdorff_per_patient
