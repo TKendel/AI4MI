@@ -4,8 +4,10 @@ from torchvision import models
 from torch.nn.functional import relu
 
 class UNet(nn.Module):
-    def __init__(self, n_class):
-        super().__init__()
+    def __init__(self, n_class, use_batchnorm=False, binary=False):
+        super(UNet, self).__init__()
+        self.use_batchnorm = use_batchnorm
+        self.binary = binary
         
         # Encoder
         # In the encoder, convolutional layers with the Conv2d function are used to extract features from the input image. 
