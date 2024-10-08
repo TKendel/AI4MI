@@ -75,22 +75,22 @@ class UNet3D(nn.Module):
 
         # Decoder
         xu1 = self.upconv1(xe52)
-        xu11 = torch.cat([xu1, xe42], dim=1)
+        xu11 = torch.cat([xu1, xe42], dim=1)  # Concatenates 512 from upconv1 and 512 from xe42
         xd11 = relu(self.d11(xu11))
         xd12 = relu(self.d12(xd11))
 
         xu2 = self.upconv2(xd12)
-        xu22 = torch.cat([xu2, xe32], dim=1)
+        xu22 = torch.cat([xu2, xe32], dim=1)  # Concatenates 256 from upconv2 and 256 from xe32
         xd21 = relu(self.d21(xu22))
         xd22 = relu(self.d22(xd21))
 
         xu3 = self.upconv3(xd22)
-        xu33 = torch.cat([xu3, xe22], dim=1)
+        xu33 = torch.cat([xu3, xe22], dim=1)  # Concatenates 128 from upconv3 and 128 from xe22
         xd31 = relu(self.d31(xu33))
         xd32 = relu(self.d32(xd31))
 
         xu4 = self.upconv4(xd32)
-        xu44 = torch.cat([xu4, xe12], dim=1)
+        xu44 = torch.cat([xu4, xe12], dim=1)  # Concatenates 64 from upconv4 and 64 from xe12
         xd41 = relu(self.d41(xu44))
         xd42 = relu(self.d42(xd41))
 
