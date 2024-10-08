@@ -297,10 +297,9 @@ def runTraining(args):
                 # calculating the 3d sccores 
                 dice_scores_per_patient = volume_dice(all_predictions_tensor, all_gt_tensor, path_to_slices)
                 iou_scores_per_patient = volume_iou(all_predictions_tensor, all_gt_tensor, path_to_slices)
-                #hausdorff_per_patient = volume_hausdorff(all_predictions_tensor, all_gt_tensor, path_to_slices, K)
+                hausdorff_per_patient = volume_hausdorff(all_predictions_tensor, all_gt_tensor, path_to_slices, K, hd_95=False)
                 slice_based_hd_per_patient = slicehausdorff(all_predictions_tensor, all_gt_tensor, path_to_slices,K)
                 
-                print(slice_based_hd_per_patient)
                 for patient_idx, (patient, dice_scores) in enumerate(dice_scores_per_patient.items()):
                     log_3d_dice[e, patient_idx, :] = dice_scores.to(dtype=log_3d_dice.dtype, device=log_3d_dice.device)
 
@@ -320,12 +319,18 @@ def runTraining(args):
                             print(f"{metric_name}-{k}: {log_metric[e, :, k].mean():05.3f}\t", end='')   #print haussdorf for all organs 
                     print()
                 
-                for metric_name, log_metric in [("HD", log_slicehd)]: #, ("3dHD", log_hausdorff)
-                    print(f"{metric_name}: {log_metric[e, :, :].mean():05.3f}\t", end='')  
+                
+                # TO DO: DECIDE ON WHAT TO DO WITH EMPTY SEGMENTATIONS (NAN or INF and what then to do with the mean calculation....)
+                for metric_name, log_metric in [("HD", log_slicehd), ("3dHD", log_hausdorff)]:
+                # Calculate the mean ignoring NaN values for the entire volume
+                    print(f"{metric_name}: {torch.nanmean(log_metric[e, :, :]):05.3f}\t", end='')
                     if K > 2:
                         for k in range(0, 4):
-                            print(f"{metric_name}-{k+1}: {log_metric[e, :, k].mean():05.3f}\t", end='')   #print haussdorf for all organs (we exluded the background so therefore k+1 to keep the labelling correct)
-                    print()
+                            # Calculate the mean ignoring NaN values for each class (per organ)
+                            print(f"{metric_name}-{k+1}: {torch.nanmean(log_metric[e, :, k]):05.3f}\t", end='')
+
+                    print()  # Move to the next line after printing the metrics for this metric_name
+
  
         # I save it at each epochs, in case the code crashes or I decide to stop it early
         np.save(args.dest / "loss_tra.npy", log_loss_tra)
@@ -341,7 +346,7 @@ def runTraining(args):
         np.save(args.dest / "3ddice_val.npy", log_3d_dice_val)
         np.save(args.dest / "3dIOU_val.npy", log_3d_IOU_val)
         np.save(args.dest / "slice_hd.npy", log_slicehd)
-        #np.save(args.dest / "3dhd.npy", log_hausdorff)
+        np.save(args.dest / "3dhd.npy", log_hausdorff)
         
 
         current_dice: float = log_dice_val[e, :, 1:].mean().item()
