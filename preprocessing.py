@@ -1,7 +1,7 @@
 import cv2 as cv
 import numpy as np
 import matplotlib.pyplot as plt
-
+from skimage.exposure import match_histograms, adjust_gamma, adjust_log, equalize_adapthist
 
 class Preprocessing:
 
@@ -16,18 +16,25 @@ class Preprocessing:
         '''
         self.img = cv.normalize(self.img, None, 0, 10, cv.NORM_MINMAX)
 
-    def equlize(self):
+    def equalize(self):
         '''
         Spread out the colour histogram of the image resulting in a higher contrast image
         '''
         self.img = cv.equalizeHist(self.img)
+
+    def adaptiveEqualize(self):
+        '''
+
+        https://scikit-image.org/docs/stable/api/skimage.exposure.html#skimage.exposure.equalize_adapthist
+        '''
+        self.img = equalize_adapthist(self.img, clip_limit=0.03)
  
     def bilateralFilter(self):
         '''
         Apply a filter that blures content to remove noise but keeps edges. More on it can be read here:
         https://docs.opencv.org/4.x/d4/d86/group__imgproc__filter.html#ga9d7064d478c95d60003cf839430737ed
         '''
-        self.img = cv.bilateralFilter(self.img, 2, 5, 5)
+        self.img = cv.bilateralFilter(self.img, 2, 3, 3)
 
     def __drawBox(self, lines):
         '''
@@ -54,6 +61,25 @@ class Preprocessing:
             return lines
         else:
             return self.__drawBox(tableXY)
+        
+    def histogramMatching(self, reference):
+        '''
+        Tries to match the colour histogram by using the reference image as a reference on image.
+        Tricky to use since the refernce should in a way move with the given image.
+        '''
+        self.img = match_histograms(self.img, reference)
+
+    def gammaCorrection(self):
+        '''
+        Turn down the contrast 
+        '''
+        self.img = adjust_gamma(self.img, 2)
+
+    def logCorrection(self):
+        '''
+        Turn up the contrast 
+        '''
+        self.img = adjust_log(self.img, 2)
 
     def save(self):
         '''

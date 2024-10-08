@@ -15,7 +15,7 @@ for filepath in glob.iglob('data\SEGTHOR\\train\img\*.png'):
         pp = Preprocessing(ct_scan, f'data\SEGTHOR_tmp\\train\img\{filepath[-19:]}')
 
         pp.bilateralFilter()
-        pp.equlize()
+        pp.equalize()
         tableXY = pp.removeTable(tableXY)
         pp.save()
         
