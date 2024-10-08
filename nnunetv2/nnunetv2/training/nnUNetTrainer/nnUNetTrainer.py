@@ -1136,16 +1136,24 @@ class nnUNetTrainer(object):
             f"Epoch time: {np.round(self.logger.my_fantastic_logging['epoch_end_timestamps'][-1] - self.logger.my_fantastic_logging['epoch_start_timestamps'][-1], decimals=2)} s")
         
         #Inigo
-        self.print_to_log_file()
-        self.print_to_log_file('train_loss', np.round(self.logger.my_fantastic_logging['train_losses'][-1], decimals=4))
-        self.print_to_log_file('val_loss', np.round(self.logger.my_fantastic_logging['val_losses'][-1], decimals=4))
-        
+        self.print_to_log_file('my logs')
+        self.print_to_log_file('EPOCH', self.current_epoch)
+        self.print_to_log_file('TRAIN LOSS', np.round(self.logger.my_fantastic_logging['train_losses'][-1], decimals=4))
+        self.print_to_log_file('VALIDATION LOSS', np.round(self.logger.my_fantastic_logging['val_losses'][-1], decimals=4))
+        self.print_to_log_file('EMA pseudo Dice', self.logger.my_fantastic_logging['ema_fg_dice'][-1])
+        self.print_to_log_file('EMA pseudo Dice', self.logger.my_fantastic_logging['ema_fg_dice'][-1])
+        #Inigo--
 
 
         # handling periodic checkpointing
         current_epoch = self.current_epoch
         if (current_epoch + 1) % self.save_every == 0 and current_epoch != (self.num_epochs - 1):
             self.save_checkpoint(join(self.output_folder, 'checkpoint_latest.pth'))
+
+            #Inigo
+            #***** add here saving the model******
+
+            #Inigo--
 
         # handle 'best' checkpointing. ema_fg_dice is computed by the logger and can be accessed like this
         if self._best_ema is None or self.logger.my_fantastic_logging['ema_fg_dice'][-1] > self._best_ema:
