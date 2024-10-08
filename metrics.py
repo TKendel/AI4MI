@@ -69,12 +69,26 @@ def volume_hausdorff(predictions, gts, path_to_slices, K, hd_95=False):
             gt_volume = volumegt[:, class_idx, :, :]
 
             # print(f"class: {class_idx}, shape pred {pred_volume.shape}")
-            # print(f"class: {class_idx}, pred gt {gt_volume.shape}")
+            # print(f"class: {class_idx}, shape gt {gt_volume.shape}")
+
+            # print(f"Unique values in pred_volume: {torch.unique(pred_volume)}")
+            # print(f"Unique values in gt_volume: {torch.unique(gt_volume)}")
+            # unique_pred_values = torch.unique(pred_volume)
+            # unique_gt_values = torch.unique(gt_volume)
+
+            # # Check if either pred_volume or gt_volume contains only the value 0
+            # if torch.equal(unique_pred_values, torch.tensor([0])) or torch.equal(unique_gt_values, torch.tensor([0])):
+            #     print(f"Unique values in pred_volume: {unique_pred_values}")
+            #     print(f"Unique values in gt_volume: {unique_gt_values}")
+
 
             # will return a list of coordinates, where each coordinate 
             #has the format [slice_index, row_index, column_index]
             pred_boundary = np.argwhere(pred_volume.numpy())
             gt_boundary = np.argwhere(gt_volume.numpy())
+
+            assert torch.sum(pred_slice) == pred_boundary.shape[0], "Mismatch in pred_slice: sum and shape don't match"
+            assert  torch.sum(gt_slice)== gt_boundary.shape[0], "Mismatch in gt_slice: sum and shape don't match"
 
             if pred_boundary.size == 0 and gt_boundary.size == 0:
                 hausdorff_distance_class = 0.0
@@ -100,10 +114,10 @@ def volume_hausdorff(predictions, gts, path_to_slices, K, hd_95=False):
                     backward_hausdorff = directed_hausdorff(gt_boundary, pred_boundary)[0]
                     hausdorff_distance_class = max(forward_hausdorff, backward_hausdorff)
             else:
-                hausdorff_distance_class = np.nan  # Handle cases where one volume is empty (no segmentation)
+                hausdorff_distance_class = np.nan  # Handle cases where one volume is empty (no segmentation) - not sure if this is the solution
             
             patient_hd.append(hausdorff_distance_class)
-        print("patient_hd", patient_hd)
+        #print("patient_hd", patient_hd)
         hausdorff_per_patient[patient_pred] = torch.tensor(patient_hd, dtype=torch.float32)
     return hausdorff_per_patient
 
@@ -171,7 +185,7 @@ def slicehausdorff(predictions, gts, path_to_slices, K):
             patient_hd.append(max(organ_hd))
 
         # Take the maximum Hausdorff distance for this patient
-        print(f"Patient {patient_pred}: Total {total_zero_count} slices set to 0, {total_inf_count} slices set to inf.")
+        #print(f"Patient {patient_pred}: Total {total_zero_count} slices set to 0, {total_inf_count} slices set to inf.")
         hausdorff_per_patient[patient_pred] = torch.tensor(patient_hd)
 
     return hausdorff_per_patient
