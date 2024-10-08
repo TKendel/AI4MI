@@ -79,6 +79,11 @@ class UNet3D(nn.Module):
         print(f"Shape of xu1 (after upconv1): {xu1.shape}")  # Print shape for debugging
         print(f"Shape of xe42 (encoder skip connection): {xe42.shape}")  # Print shape for debugging
 
+        # Pad the encoder output (xe42) to match the depth of xu1
+        if xu1.shape[2] != xe42.shape[2]:  # Check if depth doesn't match
+            xe42 = F.pad(xe42, (0, 0, 0, 0, 0, xu1.shape[2] - xe42.shape[2]))  # Pad depth dimension
+    
+
         xu11 = torch.cat([xu1, xe42], dim=1)  # Concatenate skip connection from encoder
         print(f"Shape of concatenated tensor xu11: {xu11.shape}")  # Should be [batch_size, 1024, depth, height, width]
 
