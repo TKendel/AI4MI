@@ -160,14 +160,14 @@ for patient in patient_list:
 #window_pairs = [[400, 20],[300, 0], [600, 0], [200, 100], [320,30], [1800,400]]      #add pairs as lists, with upper followerd by lower
 #window_pairs = [[100, 0],[200, 100], [300, 200], [400, 300], [500,400], [1000,500],[0,-500],[100, -100], [100, -200]]      #range tests, [300, 200] bone for patient 1
 window_pairs = [[1000, 600]]    
-
+id = 650
 
 patient_list = list(range(1,41)) #there are 40 patients
 
 for patient in patient_list:
         print('Processig patient', patient, '/40')
         volume_file = os.path.join('data/segthor_train/train/Patient_'+f"{patient:02}", 'Patient_'+f"{patient:02}"+'.nii.gz')
-        volume_destination = os.path.join('Dataset010_SEGT/nnUNet_raw_data_base/nnUNet_raw_data/Dataset600_segthor/imagesTr/', 'SEGT_'+f"{patient:03}"+'_0000.nii.gz')
+        volume_destination = os.path.join(f'Dataset010_SEGT/nnUNet_raw_data_base/nnUNet_raw_data/Dataset{id:03}_segthor/imagesTr/', 'SEGT_'+f"{patient:03}"+'_0000.nii.gz')
         shutil.copyfile(volume_file, volume_destination)      #source --> destination
 
         volume = nib.load(volume_file)  #loaad reference .nii.gz
@@ -203,7 +203,9 @@ for patient in patient_list:
         output = nib.Nifti1Image(shift, volume.affine)      #windowed.astype(np.uint8) The model is using uint8
         nib.save(output,  os.path.join('Dataset010_SEGT/nnUNet_raw_data_base/nnUNet_raw_data/Dataset600_segthor/imagesTr/', 'SEGT_'+f"{patient:03}"+'_0000_shift.nii.gz') )
         """
+        
 
+        
         shift = shift_avrg(volume_np)
         #apply all windows
         for i in range(len(window_pairs)): #equivalent to "for window in window_pairs:"
@@ -217,12 +219,12 @@ for patient in patient_list:
                 windowed[windowed < lower] = lower
 
                 output = nib.Nifti1Image(windowed, volume.affine)      #windowed.astype(np.uint8) The model is using uint8
-                nib.save(output,  os.path.join('Dataset010_SEGT/nnUNet_raw_data_base/nnUNet_raw_data/Dataset600_segthor/imagesTr/', 'SEGT_'+f"{patient:03}"+f'_000{i+1}.nii.gz') )
+                nib.save(output,  os.path.join(f'Dataset010_SEGT/nnUNet_raw_data_base/nnUNet_raw_data/Dataset{id:03}_segthor/imagesTr/', 'SEGT_'+f"{patient:03}"+f'_000{i+1}.nii.gz') )
 
 
 
         segmentation_file = os.path.join('data/segthor_train/train/Patient_'+f"{patient:02}", 'gt.nii.gz')
-        segmentation_destination = os.path.join('Dataset010_SEGT/nnUNet_raw_data_base/nnUNet_raw_data/Dataset600_segthor/labelsTr/', 'SEGT_'+f"{patient:03}"+'.nii.gz')
+        segmentation_destination = os.path.join(f'Dataset010_SEGT/nnUNet_raw_data_base/nnUNet_raw_data/Dataset{id:03}_segthor/labelsTr/', 'SEGT_'+f"{patient:03}"+'.nii.gz')
         shutil.copyfile(segmentation_file, segmentation_destination)      #source --> destination
 
         
