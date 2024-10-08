@@ -297,7 +297,7 @@ def runTraining(args):
                 # calculating the 3d sccores 
                 dice_scores_per_patient = volume_dice(all_predictions_tensor, all_gt_tensor, path_to_slices)
                 iou_scores_per_patient = volume_iou(all_predictions_tensor, all_gt_tensor, path_to_slices)
-                haudsdorff_per_patient = volume_hausdorff(all_predictions_tensor, all_gt_tensor, path_to_slices, K)
+                hausdorff_per_patient = volume_hausdorff(all_predictions_tensor, all_gt_tensor, path_to_slices, K)
                 
                 for patient_idx, (patient, dice_scores) in enumerate(dice_scores_per_patient.items()):
                     rounded_dice_scores = [float(f"{score:05.3f}") for score in dice_scores]
