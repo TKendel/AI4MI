@@ -77,11 +77,11 @@ def setup(args) -> tuple[nn.Module, Any, Any, DataLoader, DataLoader, int]:
 
    #learning rate & adam optimizer
     lr = 0.0005
-    optimizer = torch.optim.Adam(net.parameters(), lr=lr, betas=(0.9, 0.999))
-    #optimizer = torch.optim.AdamW(net.parameters(), lr=lr, betas=(0.9, 0.999), weight_decay=0.01)
+    #optimizer = torch.optim.Adam(net.parameters(), lr=lr, betas=(0.9, 0.999))
+    optimizer = torch.optim.AdamW(net.parameters(), lr=lr, betas=(0.9, 0.999), weight_decay=0.01)
 
     #adding a learning rate scheduler
-    #scheduler = lr_scheduler.PolynomialLR(optimizer, total_iters=5, power=1.0)
+    scheduler = lr_scheduler.PolynomialLR(optimizer, total_iters=5, power=1.0)
     #scheduler = lr_scheduler.CosineAnnealingLR(optimizer, T_max=5)
     #scheduler = lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.1, patience=10, verbose=True)
 
