@@ -177,7 +177,7 @@ def runTraining(args):
     log_3d_dice_val = torch.zeros((args.epochs, sampleV, K))  # Shape: (epochs, num_patients, K)
     log_3d_IOU_val = torch.zeros((args.epochs, sampleV, K))  # Shape: (epochs, num_patients, K)
     log_hausdorff_val = torch.zeros((args.epochs, sampleV, K-1))  # Shape: (epochs, num_patients, K)
-    log_95hausdorff_val = torch.zeros((args.epochs, sampleV, K-1))  # Shape: (epochs, num_patients, K)
+    #log_95hausdorff_val = torch.zeros((args.epochs, sampleV, K-1))  # Shape: (epochs, num_patients, K)
 
     log_slicehd_val = torch.zeros((args.epochs, sampleV, K-1)) 
 
@@ -214,7 +214,7 @@ def runTraining(args):
                 log_3d_dice = log_3d_dice_val
                 log_3d_IOU = log_3d_IOU_val
                 log_hausdorff = log_hausdorff_val
-                log_95hausdorff = log_95hausdorff_val
+                #log_95hausdorff = log_95hausdorff_val
                 log_slicehd = log_slicehd_val
 
                 all_predictions = [] # store the predictions each epoch
@@ -315,8 +315,8 @@ def runTraining(args):
                 dice_scores_per_patient = volume_dice(all_predictions_tensor, all_gt_tensor, path_to_slices)
                 iou_scores_per_patient = volume_iou(all_predictions_tensor, all_gt_tensor, path_to_slices)
                 hausdorff_per_patient = volume_hausdorff(all_predictions_tensor, all_gt_tensor, path_to_slices, K, hd_95=False)
-                # 95 HAUSDORFF TAKES TOO LONG BTU DOES NOT GIVE ERROR I THINK
-                _95hausdorf_per_patient = volume_hausdorff(all_predictions_tensor, all_gt_tensor, path_to_slices, K, hd_95=True)
+                # 95 HAUSDORFF gives an error that it has been killed
+                #_95hausdorf_per_patient = volume_hausdorff(all_predictions_tensor, all_gt_tensor, path_to_slices, K, hd_95=True)
                 slice_based_hd_per_patient = slice_hausdorff(all_predictions_tensor, all_gt_tensor, path_to_slices,K)
                 
                 for patient_idx, (patient, dice_scores) in enumerate(dice_scores_per_patient.items()):
@@ -329,8 +329,8 @@ def runTraining(args):
                     log_hausdorff[e, patient_idx, :] = hausdorff.to(dtype=log_hausdorff.dtype, device=log_hausdorff.device)
             
 
-                for patient_idx, (patient, _95hausdorff) in enumerate(_95hausdorf_per_patient.items()):
-                    log_95hausdorff[e, patient_idx, :] = _95hausdorff.to(dtype=log_95hausdorff.dtype, device=log_95hausdorff.device)
+                # for patient_idx, (patient, _95hausdorff) in enumerate(_95hausdorf_per_patient.items()):
+                #     log_95hausdorff[e, patient_idx, :] = _95hausdorff.to(dtype=log_95hausdorff.dtype, device=log_95hausdorff.device)
             
                 for patient_idx, (patient, sb_hd) in enumerate(slice_based_hd_per_patient.items()):
                     log_slicehd[e, patient_idx, :] = sb_hd.to(dtype=log_slicehd.dtype, device=log_slicehd.device)
@@ -339,15 +339,15 @@ def runTraining(args):
                     print(f"{metric_name}: {log_metric[e, :, 1:].mean():05.3f}\t", end='')  #exclude background from mean
                     if K > 2:
                         for k in range(1, K):
-                            print(f"{metric_name}-{k}: {log_metric[e, :, k].mean():05.3f}\t", end='')   #print haussdorf for all organs 
+                            print(f"{metric_name}-{k}: {log_metric[e, :, k].mean():05.3f}\t", end='')  
                     print()
                 
 
-                for metric_name, log_metric in [("HD", log_hausdorff), ("95HD", log_95hausdorff),("slHD", log_slicehd)]:  
+                for metric_name, log_metric in [("HD", log_hausdorff), ("slHD", log_slicehd)]:  #("95HD", log_95hausdorff),
                     print(f"{metric_name}: {log_metric[e, :, :].mean():05.3f}\t", end='')  
                     if K > 2:
                         for k in range(0, 4):
-                            print(f"{metric_name}-{k+1}: {log_metric[e, :, k].mean():05.3f}\t", end='')   #print haussdorf for all organs (we exluded the background so therefore k+1 to keep the labelling correct)
+                            print(f"{metric_name}-{k+1}: {log_metric[e, :, k].mean():05.3f}\t", end='')   #print haussdorf for all organs (we did not caluclate it for the background so therefore k+1 to keep the labelling correct)
                     print()
 
         # I save it at each epochs, in case the code crashes or I decide to stop it early
@@ -375,7 +375,7 @@ def runTraining(args):
         np.save(args.dest / "3dIOU_val.npy", log_3d_IOU_val)
         np.save(args.dest / "slHD.npy", log_slicehd)
         np.save(args.dest / "HD.npy", log_hausdorff)
-        np.save(args.dest / "95HD.npy", log_95hausdorff)
+        #np.save(args.dest / "95HD.npy", log_95hausdorff)
         
         dice = dice_coefficient(pred, target)
         iou_val = iou(pred, target)
