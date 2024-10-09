@@ -286,7 +286,7 @@ def runTraining(args):
                     # For the DSC average: do not take the background class (0) into account:
                     postfix_dict: dict[str, str] = {"Dice": f"{log_dice[e, :j, 1:].mean():05.3f}",
                                                     "Loss": f"{log_loss[e, :i + 1].mean():5.2e}",
-                                                    "Focal Loss": f"{log_focal[e, :i + 1].mean():05.2e}"} # Adding the focal loss
+                                                    "Focal Loss": f"{log_focal[e, :i + 1].mean():05.2e}", # Adding the focal loss
                                                     "dLoss": f"{log_dloss[e, :i + 1].mean():5.2e}"}
                     if K > 2:
                         postfix_dict |= {f"Dice-{k}": f"{log_dice[e, :j, k].mean():05.3f}"
