@@ -151,6 +151,7 @@ def run_training(dataset_name_or_id: Union[str, int],
                  device: torch.device = torch.device('cuda')):
     if plans_identifier == 'nnUNetPlans':
         print("\n############################\n"
+              "IGNORE THIS LINE, You are running an eddited vesion of nnnunetv2"    #Inigo
               "INFO: You are using the old nnU-Net default plans. We have updated our recommendations. "
               "Please consider using those instead! "
               "Read more here: https://github.com/MIC-DKFZ/nnUNet/blob/master/documentation/resenc_presets.md"
@@ -278,8 +279,8 @@ def run_training_entry():
 
 
 if __name__ == '__main__':
-    print('THIS IS THE RIGHT VERSION!!!!!!')
-    print('YOU ARE RUNNING AN EDITED VERSIONN OF NNUNETV2')
+    print('THIS IS THE RIGHT VERSION!!!!!!')    #Inigo
+    print('YOU ARE RUNNING AN EDITED VERSIONN OF NNUNETV2') #Inigo
     os.environ['OMP_NUM_THREADS'] = '1'
     os.environ['MKL_NUM_THREADS'] = '1'
     os.environ['OPENBLAS_NUM_THREADS'] = '1'
