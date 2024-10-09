@@ -49,7 +49,7 @@ from utils import (Dcm,
                    save_images)
 
 from losses import (CrossEntropy)
-
+from losses import (BinaryFocalLoss) # added
 
 datasets_params: dict[str, dict[str, Any]] = {}
 # K for the number of classes
@@ -125,17 +125,27 @@ def runTraining(args):
     net, optimizer, device, train_loader, val_loader, K = setup(args)
 
     if args.mode == "full":
-        loss_fn = CrossEntropy(idk=list(range(K)))  # Supervise both background and foreground
+        # loss_fn = CrossEntropy(idk=list(range(K)))  # Supervise both background and foreground
+        # Changed to BinaryFocalLoss
+        loss_fn = BinaryFocalLoss(idk=list(range(K))) 
     elif args.mode in ["partial"] and args.dataset in ['SEGTHOR', 'SEGTHOR_STUDENTS']:
-        loss_fn = CrossEntropy(idk=[0, 1, 3, 4])  # Do not supervise the heart (class 2)
+        # loss_fn = CrossEntropy(idk=[0, 1, 3, 4])  # Do not supervise the heart (class 2)
+        # Changed to BinaryFocalLoss
+        loss_fn = BinaryFocalLoss(idk=[0, 1, 3, 4])
     else:
         raise ValueError(args.mode, args.dataset)
 
     # Notice one has the length of the _loader_, and the other one of the _dataset_
     log_loss_tra: Tensor = torch.zeros((args.epochs, len(train_loader)))
     log_dice_tra: Tensor = torch.zeros((args.epochs, len(train_loader.dataset), K))
+    # Added log_focal_tra
+    log_focal_tra: Tensor = torch.zeros((args.epochs, len(train_loader)))
+
     log_loss_val: Tensor = torch.zeros((args.epochs, len(val_loader)))
     log_dice_val: Tensor = torch.zeros((args.epochs, len(val_loader.dataset), K))
+    # Added log_focal_val
+    log_focal_val: Tensor = torch.zeros((args.epochs, len(val_loader)))
+
 
     best_dice: float = 0
 
@@ -150,6 +160,8 @@ def runTraining(args):
                 loader = train_loader
                 log_loss = log_loss_tra
                 log_dice = log_dice_tra
+                # Added for BinaryFocalLoss
+                log_focal = log_focal_tra
             if m == 'val':
                 net.eval()
                 opt = None
@@ -158,6 +170,8 @@ def runTraining(args):
                 loader = val_loader
                 log_loss = log_loss_val
                 log_dice = log_dice_val
+                # Added loss for BinaryFocalLoss
+                log_focal = log_focal_val
             #If we ever get python 3.11, we can change to match and remove the upper two if statements
             """
             match m:
@@ -200,12 +214,18 @@ def runTraining(args):
                     pred_seg = probs2one_hot(pred_probs)
                     log_dice[e, j:j + B, :] = dice_coef(pred_seg, gt)  # One DSC value per sample and per class
 
+                    # Compute focal loss
                     loss = loss_fn(pred_probs, gt)
                     log_loss[e, i] = loss.item()  # One loss value per batch (averaged in the loss)
 
+                    # todo focal: compute focal loss
+                    # floss = binary_focal_loss(pred_probs, gt)
+                    # log_loss[e, i] = floss.item()  # One loss value per batch (averaged in the loss)
+
                     if opt:  # Only for training
-                        loss.backward()
+                        loss.backward() #todo focal: change to floss
                         opt.step()
+
 
                     if m == 'val':
                         with warnings.catch_warnings():
@@ -219,7 +239,8 @@ def runTraining(args):
                     j += B  # Keep in mind that _in theory_, each batch might have a different size
                     # For the DSC average: do not take the background class (0) into account:
                     postfix_dict: dict[str, str] = {"Dice": f"{log_dice[e, :j, 1:].mean():05.3f}",
-                                                    "Loss": f"{log_loss[e, :i + 1].mean():5.2e}"}
+                                                    "Loss": f"{log_loss[e, :i + 1].mean():5.2e}",
+                                                    "Focal Loss": f"{log_focal[e, :i + 1].mean():05.2e}"} # Adding the focal loss
                     if K > 2:
                         postfix_dict |= {f"Dice-{k}": f"{log_dice[e, :j, k].mean():05.3f}"
                                          for k in range(1, K)}
@@ -228,8 +249,10 @@ def runTraining(args):
         # I save it at each epochs, in case the code crashes or I decide to stop it early
         np.save(args.dest / "loss_tra.npy", log_loss_tra)
         np.save(args.dest / "dice_tra.npy", log_dice_tra)
+        np.save(args.dest / "focal_tra.npy", log_focal_tra)
         np.save(args.dest / "loss_val.npy", log_loss_val)
         np.save(args.dest / "dice_val.npy", log_dice_val)
+        np.save(args.dest / "focal_val.npy", log_focal_val)
 
         current_dice: float = log_dice_val[e, :, 1:].mean().item()
         if current_dice > best_dice:
