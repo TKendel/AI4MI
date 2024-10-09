@@ -282,7 +282,8 @@ def runTraining(args):
                 print(dice_scores_per_patient)
                 for patient_idx, (patient, dice_scores) in enumerate(dice_scores_per_patient.items()):
                     rounded_dice_scores = [float(f"{score:05.3f}") for score in dice_scores]
-                    log_3d_dice[e, patient_idx, :] = rounded_dice_scores  
+                    rounded_dice_tensor = torch.tensor(rounded_dice_scores, dtype=torch.float32)
+                    log_3d_dice[e, patient_idx, :] = rounded_dice_tensor
 
                 print(f"3d Dice Score (averaged over all patients and classes): {log_3d_dice[e, :, 1:].mean():05.3f}")
                 if K > 2:
