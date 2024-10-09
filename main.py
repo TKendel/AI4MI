@@ -127,11 +127,11 @@ def runTraining(args):
     if args.mode == "full":
         # loss_fn = CrossEntropy(idk=list(range(K)))  # Supervise both background and foreground
         # Changed to BinaryFocalLoss
-        loss_fn = BinaryFocalLoss(idk=list(range(K))) 
+        fl_loss_fn = BinaryFocalLoss(idk=list(range(K))) 
     elif args.mode in ["partial"] and args.dataset in ['SEGTHOR', 'SEGTHOR_STUDENTS']:
         # loss_fn = CrossEntropy(idk=[0, 1, 3, 4])  # Do not supervise the heart (class 2)
         # Changed to BinaryFocalLoss
-        loss_fn = BinaryFocalLoss(idk=[0, 1, 3, 4])
+        fl_loss_fn = BinaryFocalLoss(idk=[0, 1, 3, 4])
     else:
         raise ValueError(args.mode, args.dataset)
 
@@ -215,15 +215,15 @@ def runTraining(args):
                     log_dice[e, j:j + B, :] = dice_coef(pred_seg, gt)  # One DSC value per sample and per class
 
                     # Compute focal loss
-                    loss = loss_fn(pred_probs, gt)
-                    log_loss[e, i] = loss.item()  # One loss value per batch (averaged in the loss)
+                    floss = fl_loss_fn(pred_probs, gt)
+                    log_focal[e, i] = floss.item()  # One loss value per batch (averaged in the loss)
 
                     # todo focal: compute focal loss
                     # floss = binary_focal_loss(pred_probs, gt)
                     # log_loss[e, i] = floss.item()  # One loss value per batch (averaged in the loss)
 
                     if opt:  # Only for training
-                        loss.backward() #todo focal: change to floss
+                        floss.backward() #todo focal: change to floss
                         opt.step()
 
 
