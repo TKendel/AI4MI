@@ -84,20 +84,38 @@ def volume_hausdorff(predictions, gts, path_to_slices, K, hd_95=False):
             elif pred_boundary.size > 0 and gt_boundary.size > 0:
                 if hd_95:
                     # compute pairwise distances 
-                    distances_pred_to_gt = cdist(pred_boundary, gt_boundary, 'euclidean')
-                    distances_gt_to_pred = cdist(gt_boundary, pred_boundary, 'euclidean')
+                    # Convert boundaries to torch tensors and move to GPU
+                    pred_boundarygpu = torch.tensor(pred_boundary, dtype=torch.float32).cuda()
+                    gt_boundarygpu = torch.tensor(gt_boundary, dtype=torch.float32).cuda()
 
-                    # retrieve minimum distance - for each point in the predicted boundary, it finds the nearest point in the ground truth boundary.
-                    min_distances_pred_to_gt = np.min(distances_pred_to_gt, axis=1)  
-                    min_distances_gt_to_pred = np.min(distances_gt_to_pred, axis=1)
+                    # Compute pairwise distances (euclidean distance manually to save memory)
+                    distances_pred_to_gt = torch.cdist(pred_boundarygpu, gt_boundarygpu)
+                    distances_gt_to_pred = torch.cdist(gt_boundarygpu, pred_boundarygpu)
 
-                    # calculate the 95th percentile of the minimum distances
-                    # --> finds a distance such that 95% of the minimum distances from predicted points to ground truth points are less than or equal to this value.
-                    hd95_pred_to_gt = np.percentile(min_distances_pred_to_gt, 95)
-                    hd95_gt_to_pred = np.percentile(min_distances_gt_to_pred, 95)
+                    # Find the minimum distance for each point in both directions
+                    min_distances_pred_to_gt = torch.min(distances_pred_to_gt, dim=1)[0]
+                    min_distances_gt_to_pred = torch.min(distances_gt_to_pred, dim=1)[0]
 
-                    # The final HD95 is the maximum of the two 95th percentiles
-                    hausdorff_distance_class = max(hd95_pred_to_gt, hd95_gt_to_pred)
+                    # Combine distances and compute 95th percentile
+                    all_min_distances = torch.cat([min_distances_pred_to_gt, min_distances_gt_to_pred])
+                    hausdorff_distance_class = torch.quantile(all_min_distances, 0.95).item()
+
+                    #####################################################################################
+
+                    # distances_pred_to_gt = cdist(pred_boundary, gt_boundary, 'euclidean')
+                    # distances_gt_to_pred = cdist(gt_boundary, pred_boundary, 'euclidean')
+
+                    # # retrieve minimum distance - for each point in the predicted boundary, it finds the nearest point in the ground truth boundary.
+                    # min_distances_pred_to_gt = np.min(distances_pred_to_gt, axis=1)  
+                    # min_distances_gt_to_pred = np.min(distances_gt_to_pred, axis=1)
+
+                    # # calculate the 95th percentile of the minimum distances
+                    # # --> finds a distance such that 95% of the minimum distances from predicted points to ground truth points are less than or equal to this value.
+                    # hd95_pred_to_gt = np.percentile(min_distances_pred_to_gt, 95)
+                    # hd95_gt_to_pred = np.percentile(min_distances_gt_to_pred, 95)
+
+                    # # The final HD95 is the maximum of the two 95th percentiles
+                    # hausdorff_distance_class = max(hd95_pred_to_gt, hd95_gt_to_pred)
                 else:
                     forward_hausdorff = directed_hausdorff(pred_boundary, gt_boundary)[0]
                     backward_hausdorff = directed_hausdorff(gt_boundary, pred_boundary)[0]
