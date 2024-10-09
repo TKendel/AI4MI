@@ -83,3 +83,55 @@ class DiceLoss():
 class PartialDiceLoss(DiceLoss):
     def __init__(self, **kwargs):
         super().__init__(idk=[1], **kwargs)
+
+
+# ==== Focal Loss =======
+# Focal loss: handles the cases where CE loss performs badly, namely
+# 1. When class imbalance inherits bias in the process (majority class examples will dominate the loss function and gradient descent)
+# 2. CE loss fails to distinguish between hard and easy examples. CE loss fails to pay more attention to hard examples
+
+# --> focal loss focuses on the examples that the model gets wrong rather than the ones it can confidentially predict
+# --> ensures that predictions on hard examples improve over time rather than becoming overly cofident with easy ones.
+# Down Weighting: technique that reduces the influence of easy examples on the loss function > pays more attention on hard examples
+# Focal Loss adds a modulating factor to the CE loss.
+# FocalLoss = - alpha_i (i - p_i)^gamma * log(p_i)
+
+class BinaryFocalLoss():
+    def __init__(self, cross_entropy, gamma=2, alpha=0.25, **kwargs):
+        """
+        Focal Loss for binary classification using the provided CrossEntropy implementation from above.
+        gamma: focusing parameter to control how much to focus on hard example
+        alpha: balancing factor for class imbalance
+        """
+        self.gamma = gamma
+        self.alpha = alpha
+        self.cross_entropy = cross_entropy # CrossEntropy instance 
+        print(f"Initialized {self.__class__.__name__} with gamma={self.gamma}, alpha={self.alpha}")
+
+    def __call__(self, pred_softmax, weak_target):
+        """
+        pred_softmax: the predicted softmax probabilities
+        weak_target: the target mask, containing binary labels (0 or 1)
+        """
+
+        assert pred_softmax.shape == weak_target.shape
+        assert simplex(pred_softmax)
+        assert sset(weak_target, [0, 1])
+
+        # Compute the base CE loss using the existing CrossEntropy class
+        # (This will compute: loss = - einsum("bkwh,bkwh->", mask, log_p))
+        ce_loss = self.cross_entropy(pred_softmax, weak_target)
+
+        # Get the probability of the true class
+        prob_true = pred_softmax * weak_target + (1 - pred_softmax) * (1 - weak_target)
+
+        # Calculate focal weight: (1 - prob_true)^gamma
+        focal_weight = (1 - prob_true) ** self.gamma
+
+        # Apply the alpha balancing factor
+        alpha_factor = weak_target * self.alpha + (1 - weak_target) * (1 - self.alpha)
+
+        # Apply alpha balancing factor to focal weight
+        focal_loss = alpha_factor * focal_weight * ce_loss
+
+        return focal_loss.mean() # not sure if I should use .mean()
