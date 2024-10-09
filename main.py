@@ -158,7 +158,7 @@ def runTraining(args):
     elif args.mode in ["partial"] and args.dataset in ['SEGTHOR', 'SEGTHOR_STUDENTS']:
         # loss_fn = CrossEntropy(idk=[0, 1, 3, 4])  # Do not supervise the heart (class 2)
         # Changed to BinaryFocalLoss
-        loss_fn = BinaryFocalLoss(idk=[0, 1, 3, 4])
+        fl_loss_fn = BinaryFocalLoss(idk=[0, 1, 3, 4])
     else:
         raise ValueError(args.mode, args.dataset)
 
@@ -270,7 +270,7 @@ def runTraining(args):
                     log_dloss[e, i] = dloss.item() 
 
                     if opt:  # Only for training
-                        loss.backward() #todo focal: change to floss
+                        floss.backward() #todo focal: change to floss
                         opt.step()
 
 
