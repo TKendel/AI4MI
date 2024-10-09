@@ -60,6 +60,9 @@ def volume_hausdorff(predictions, gts, path_to_slices, K, hd_95=False):
     prediction_patient_volumes, gt_patient_volumes = return_volumes(predictions, gts, path_to_slices)
     hausdorff_per_patient = {}
     for (patient_pred, volumepred), (patient_gt, volumegt) in zip(prediction_patient_volumes.items(), gt_patient_volumes.items()):
+        # Get the diagonal distance as the maximum possible distance for the 3D volume (slices x H x W)
+        slices, classes, H, W = volumepred.shape
+        max_diagonal_distance = np.sqrt(slices**2 + H**2 + W**2)
         assert patient_pred == patient_gt
         patient_hd = []
 
@@ -68,27 +71,13 @@ def volume_hausdorff(predictions, gts, path_to_slices, K, hd_95=False):
             pred_volume = volumepred[:, class_idx, :, :]
             gt_volume = volumegt[:, class_idx, :, :]
 
-            # print(f"class: {class_idx}, shape pred {pred_volume.shape}")
-            # print(f"class: {class_idx}, shape gt {gt_volume.shape}")
-
-            # print(f"Unique values in pred_volume: {torch.unique(pred_volume)}")
-            # print(f"Unique values in gt_volume: {torch.unique(gt_volume)}")
-            # unique_pred_values = torch.unique(pred_volume)
-            # unique_gt_values = torch.unique(gt_volume)
-
-            # # Check if either pred_volume or gt_volume contains only the value 0
-            # if torch.equal(unique_pred_values, torch.tensor([0])) or torch.equal(unique_gt_values, torch.tensor([0])):
-            #     print(f"Unique values in pred_volume: {unique_pred_values}")
-            #     print(f"Unique values in gt_volume: {unique_gt_values}")
-
-
             # will return a list of coordinates, where each coordinate 
             #has the format [slice_index, row_index, column_index]
             pred_boundary = np.argwhere(pred_volume.numpy())
             gt_boundary = np.argwhere(gt_volume.numpy())
 
-            assert torch.sum(pred_slice) == pred_boundary.shape[0], "Mismatch in pred_slice: sum and shape don't match"
-            assert  torch.sum(gt_slice)== gt_boundary.shape[0], "Mismatch in gt_slice: sum and shape don't match"
+            assert torch.sum(pred_boundary) == pred_boundary.shape[0], "Mismatch in pred_slice: sum and shape don't match"
+            assert  torch.sum(gt_boundary)== gt_boundary.shape[0], "Mismatch in gt_slice: sum and shape don't match"
 
             if pred_boundary.size == 0 and gt_boundary.size == 0:
                 hausdorff_distance_class = 0.0
@@ -114,7 +103,7 @@ def volume_hausdorff(predictions, gts, path_to_slices, K, hd_95=False):
                     backward_hausdorff = directed_hausdorff(gt_boundary, pred_boundary)[0]
                     hausdorff_distance_class = max(forward_hausdorff, backward_hausdorff)
             else:
-                hausdorff_distance_class = np.nan  # Handle cases where one volume is empty (no segmentation) - not sure if this is the solution
+                hausdorff_distance_class = max_diagonal_distance # Handle cases where one volume is empty (no segmentation) - not sure if this is the solution
             
             patient_hd.append(hausdorff_distance_class)
         #print("patient_hd", patient_hd)
@@ -122,7 +111,7 @@ def volume_hausdorff(predictions, gts, path_to_slices, K, hd_95=False):
     return hausdorff_per_patient
 
 
-def slicehausdorff(predictions, gts, path_to_slices, K):
+def slice_hausdorff(predictions, gts, path_to_slices, K):
     
     prediction_patient_volumes, gt_patient_volumes = return_volumes(predictions, gts, path_to_slices)
     hausdorff_per_patient = {}
@@ -152,7 +141,6 @@ def slicehausdorff(predictions, gts, path_to_slices, K):
                 # Extract boundary points (non-zero elements)
                 pred_points = np.argwhere(pred_slice.numpy())
                 gt_points = np.argwhere(gt_slice.numpy())
-                #print(pred_points.shape)
 
                 # Verify the sum and shape match
                 assert sum_pred.item() == pred_points.shape[0], "Mismatch in pred_slice: sum and shape don't match"
@@ -165,7 +153,7 @@ def slicehausdorff(predictions, gts, path_to_slices, K):
                     zero_count += 1
                 elif pred_points.shape[0] == 0 or gt_points.shape[0] == 0:
                     #print(f"One of pred_slice or gt_slice is empty for slice {slice_idx}")
-                    hd = np.inf
+                    hd = max_distance
                     inf_count += 1
 
                 else:
