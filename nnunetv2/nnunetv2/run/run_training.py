@@ -278,6 +278,8 @@ def run_training_entry():
 
 
 if __name__ == '__main__':
+    print('THIS IS THE RIGHT VERSION!!!!!!')
+    print('YOU ARE RUNNING AN EDITED VERSIONN OF NNUNETV2')
     os.environ['OMP_NUM_THREADS'] = '1'
     os.environ['MKL_NUM_THREADS'] = '1'
     os.environ['OPENBLAS_NUM_THREADS'] = '1'
