@@ -22,12 +22,12 @@ class Preprocessing:
         '''
         self.img = cv.equalizeHist(self.img)
 
-    def adaptiveEqualize(self):
+    def adaptiveEqualize(self, clip_limit=0.03):
         '''
 
         https://scikit-image.org/docs/stable/api/skimage.exposure.html#skimage.exposure.equalize_adapthist
         '''
-        self.img = equalize_adapthist(self.img, clip_limit=0.03)
+        self.img = equalize_adapthist(self.img, clip_limit=clip_limit)
  
     def bilateralFilter(self):
         '''
@@ -43,7 +43,7 @@ class Preprocessing:
         a,b,c = lines.shape
         for i in range(a):
             if lines[i][0][2] > 174:
-                self.img = cv.rectangle(self.img, (lines[i][0][2], 0), (255,255), (0, 0, 0), -1)
+                self.img = cv.rectangle(self.img, (lines[i][0][2]+5, 0), (255,255), (0, 0, 0), -1)
 
         return lines
 
@@ -54,11 +54,11 @@ class Preprocessing:
         if not tableXY.any():
             edges = cv.Canny(self.img, 50, 150)
             minLineLength=180
-            lines = cv.HoughLinesP(image=edges, rho=1, theta=np.pi, threshold=60, lines=np.array([]), minLineLength=minLineLength, maxLineGap=60)
+            tableXY = cv.HoughLinesP(image=edges, rho=1, theta=np.pi, threshold=60, lines=np.array([]), minLineLength=minLineLength, maxLineGap=60)
 
-            lines = self.__drawBox(lines)
+            tableXY = self.__drawBox(tableXY)
 
-            return lines
+            return tableXY
         else:
             return self.__drawBox(tableXY)
         
@@ -69,17 +69,17 @@ class Preprocessing:
         '''
         self.img = match_histograms(self.img, reference)
 
-    def gammaCorrection(self):
+    def gammaCorrection(self, gamma_value):
         '''
         Turn down the contrast 
         '''
-        self.img = adjust_gamma(self.img, 2)
+        self.img = np.uint8(adjust_gamma(self.img, gamma_value))
 
-    def logCorrection(self):
+    def logCorrection(self, log_value):
         '''
         Turn up the contrast 
         '''
-        self.img = adjust_log(self.img, 2)
+        self.img = np.uint8(adjust_log(self.img, log_value))
 
     def save(self):
         '''
