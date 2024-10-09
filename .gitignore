@@ -17,3 +17,4 @@ local_server_backup/*
 logs/*
 logs_out/*
 Altnnunet/*
+serv/*
