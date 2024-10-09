@@ -183,13 +183,21 @@ def main(args: argparse.Namespace):
                                  test_mode=mode == 'test')
         resolutions: list[tuple[float, float, float]]
         iterator = tqdm_(split_ids)
-        match args.process:
-            case 1:
-                resolutions = list(map(pfun, iterator))
-            case -1:
-                resolutions = Pool().map(pfun, iterator)
-            case _ as p:
-                resolutions = Pool(p).map(pfun, iterator)
+        # match args.process:
+        #     case 1:
+        #         resolutions = list(map(pfun, iterator))
+        #     case -1:
+        #         resolutions = Pool().map(pfun, iterator)
+        #     case _ as p:
+        #         resolutions = Pool(p).map(pfun, iterator)
+
+        if args.process == 1:
+            resolutions = list(map(pfun, iterator))
+        elif args.process == -1:
+            resolutions = Pool().map(pfun, iterator)
+        else:
+            resolutions = Pool(args.process).map(pfun, iterator)
+
 
         for key, val in zip(split_ids, resolutions):
             resolution_dict[key] = val
