@@ -16,6 +16,10 @@ class nnUNetLogger(object):
     """
     def __init__(self, verbose: bool = False):
         self.my_fantastic_logging = {
+            #Inigo
+            'iou': list(),
+            #'inigo_loss': list(),  #*******
+            #Inigo--
             'mean_fg_dice': list(),
             'ema_fg_dice': list(),
             'dice_per_class_or_region': list(),

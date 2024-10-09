@@ -1122,6 +1122,14 @@ class nnUNetTrainer(object):
         self.logger.log('dice_per_class_or_region', global_dc_per_class, self.current_epoch)
         self.logger.log('val_losses', loss_here, self.current_epoch)
 
+        #Inigo
+        #******
+        IoU = tp/(tp+fp+fn)
+        self.logger.log('iou', IoU, self.current_epoch)    #change inout of files, calculate it?******
+
+        #self.logger.log('inigo_loss', mean_fg_dice, self.current_epoch) #Add Floor's loss
+        #Inigo--
+
     def on_epoch_start(self):
         self.logger.log('epoch_start_timestamps', time(), self.current_epoch)
 
@@ -1141,7 +1149,7 @@ class nnUNetTrainer(object):
         self.print_to_log_file('TRAIN LOSS', np.round(self.logger.my_fantastic_logging['train_losses'][-1], decimals=4))
         self.print_to_log_file('VALIDATION LOSS', np.round(self.logger.my_fantastic_logging['val_losses'][-1], decimals=4))
         self.print_to_log_file('EMA pseudo Dice', self.logger.my_fantastic_logging['ema_fg_dice'][-1])
-        self.print_to_log_file('EMA pseudo Dice', self.logger.my_fantastic_logging['ema_fg_dice'][-1])
+        self.print_to_log_file('IoU', self.logger.my_fantastic_logging['iou'][-1])
         #Inigo--
 
 
@@ -1152,7 +1160,7 @@ class nnUNetTrainer(object):
 
             #Inigo
             #***** add here saving the model******
-
+            # Save the scores so far
             #Inigo--
 
         # handle 'best' checkpointing. ema_fg_dice is computed by the logger and can be accessed like this
