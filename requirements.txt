@@ -6,10 +6,10 @@ tqdm
 pillow
 scikit-image
 matplotlib
-nnunetv2
+#nnunetv2
+#nnunet
 git+https://github.com/FabianIsensee/hiddenlayer.git
 opencv-python
 nibabel
 scipy
 SimpleITK
-nnunet
