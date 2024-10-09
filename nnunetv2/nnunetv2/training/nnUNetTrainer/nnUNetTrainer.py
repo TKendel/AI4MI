@@ -1126,7 +1126,6 @@ class nnUNetTrainer(object):
         #******
         IoU = tp/(tp+fp+fn)
         self.logger.log('iou', IoU, self.current_epoch)    #change inout of files, calculate it?******
-
         #self.logger.log('inigo_loss', mean_fg_dice, self.current_epoch) #Add Floor's loss
         #Inigo--
 
@@ -1148,8 +1147,9 @@ class nnUNetTrainer(object):
         self.print_to_log_file('EPOCH', self.current_epoch)
         self.print_to_log_file('TRAIN LOSS', np.round(self.logger.my_fantastic_logging['train_losses'][-1], decimals=4))
         self.print_to_log_file('VALIDATION LOSS', np.round(self.logger.my_fantastic_logging['val_losses'][-1], decimals=4))
-        self.print_to_log_file('EMA pseudo Dice', self.logger.my_fantastic_logging['ema_fg_dice'][-1])
         self.print_to_log_file('IoU', self.logger.my_fantastic_logging['iou'][-1])
+        self.print_to_log_file('DICE PER CLASS', self.logger.my_fantastic_logging['dice_per_class_or_region'][-1])
+        self.print_to_log_file('EMA pseudo Dice', self.logger.my_fantastic_logging['ema_fg_dice'][-1])
         #Inigo--
 
 
@@ -1161,6 +1161,10 @@ class nnUNetTrainer(object):
             #Inigo
             #***** add here saving the model******
             # Save the scores so far
+            for key in self.logger.my_fantastic_logging:
+                file = join(self.output_folder, f'{key}.npy')
+                key_array = np.array(self.logger.my_fantastic_logging[key])
+                np.save(file, key_array)
             #Inigo--
 
         # handle 'best' checkpointing. ema_fg_dice is computed by the logger and can be accessed like this
