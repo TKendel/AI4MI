@@ -27,6 +27,9 @@ from functools import partial
 from multiprocessing import Pool
 from contextlib import AbstractContextManager
 from typing import Callable, Iterable, List, Set, Tuple, TypeVar, cast
+import os
+from collections import defaultdict
+
 
 import torch
 import numpy as np
@@ -107,8 +110,8 @@ def probs2class(probs: Tensor) -> Tensor:
     b, _, *img_shape = probs.shape
     assert simplex(probs)
 
-    res = probs.argmax(dim=1)
-    assert res.shape == (b, *img_shape)
+    res = probs.argmax(dim=1)  # selects the class with the highest probability for each pixel.
+    assert res.shape == (b, *img_shape) #res will be a tensor of class labels for each pixel (B, H, W)
 
     return res
 
@@ -152,8 +155,9 @@ def meta_dice(sum_str: str, label: Tensor, pred: Tensor, smooth: float = 1e-8) -
     return dices
 
 
-dice_coef = partial(meta_dice, "bk...->bk")
-dice_batch = partial(meta_dice, "bk...->k")  # used for 3d dice
+dice_coef = partial(meta_dice, "bk...->bk") #computes Dice coefficients per image (b dimension) and per class (k dimension).
+dice_batch = partial(meta_dice, "bk...->k")  # used for 3d dice  ## dice_scores will have shape (k,), giving us the Dice coefficient for each class across the entire 3D volume
+
 
 
 def intersection(a: Tensor, b: Tensor) -> Tensor:
@@ -176,3 +180,29 @@ def union(a: Tensor, b: Tensor) -> Tensor:
     assert sset(res, [0, 1])
 
     return res
+
+
+
+def count_slices_per_patient(image_dir):
+    """
+    Count the number of slices for each patient based on filenames in a directory.
+    Args:
+    - image_dir (str): Path to the directory containing patient slice images.
+    Returns:
+    - slices_per_patient (dict): Dictionary where keys are patient IDs and values are the number of slices.
+    """
+    slices_per_patient = defaultdict(int)
+
+    for filename in os.listdir(image_dir):
+        if filename.lower().endswith(".png"):
+            # Assuming the format is like "Patient_03_000.png"
+            patient_id = '_'.join(filename.split('_')[:2])
+            slices_per_patient[patient_id] += 1
+
+    return slices_per_patient
+
+
+
+
+  
+
