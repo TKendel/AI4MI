@@ -69,8 +69,11 @@ for image_file in image_files:
     # center = (w // 2, h // 2)  # Rotation around the center of the image
 
     # # Get the rotation matrix and apply the affine transformation
-    # rotation_matrix = cv.getRotationMatrix2D(center, angle, 1.0)
+    # rotation_matrix = cv.getRotationMatrix2D(center, angle, 1.0)g   
     # rotated_img = cv.warpAffine(img_normalized, rotation_matrix, (w, h))
+
+    # === Save the preprocessed image (overwriting the original image) ===
+    cv.imwrite(image_path, final_img)  # Overwrite the original image with the preprocessed image
 
     # # === Display the original, enhanced, and rotated images ===
     # titles = ['Original Image', 'Contrast Enhanced Image']
