@@ -74,10 +74,10 @@ def setup(args) -> tuple[nn.Module, Any, Any, DataLoader, DataLoader, int]:
     net.init_weights()
     net.to(device)
 
-    #learning rate & adam optimizer
+   #learning rate & adam optimizer
     lr = 0.0005
     optimizer = torch.optim.Adam(net.parameters(), lr=lr, betas=(0.9, 0.999))
-    # optimizer = torch.optim.AdamW(net.parameters(), lr=lr, betas=(0.9, 0.999), weight_decay=0.01)
+    #optimizer = torch.optim.AdamW(net.parameters(), lr=lr, betas=(0.9, 0.999), weight_decay=0.01)
 
     #adding a learning rate scheduler
     #scheduler = lr_scheduler.PolynomialLR(optimizer, total_iters=5, power=1.0)
@@ -155,11 +155,12 @@ def runTraining(args):
         raise ValueError(args.mode, args.dataset)
 
     # Notice one has the length of the _loader_, and the other one of the _dataset_
-    log_loss_tra: Tensor = torch.zeros((args.epochs, len(train_loader)))
+    log_loss_tra: Tensor = torch.zeros((args.epochs, len(train_loader)))  # To store the loss for each batch in every epoch during training. lwn(train_laoder) = nr of batches
     log_dloss_tra: Tensor = torch.zeros((args.epochs, len(train_loader)))  # To store the loss for each batch in every epoch during training. lwn(train_laoder) = nr of batches
     log_focal_tra: Tensor = torch.zeros((args.epochs, len(train_loader)))
     log_dice_tra: Tensor = torch.zeros((args.epochs, len(train_loader.dataset), K)) # To store the Dice coefficient for each sample (image) in the training set for each class in every epoch --> nr of training samples
     log_IOU_tra: Tensor = torch.zeros((args.epochs, len(train_loader.dataset), K)) 
+
 
     log_loss_val: Tensor = torch.zeros((args.epochs, len(val_loader)))
     log_dloss_val: Tensor = torch.zeros((args.epochs, len(train_loader)))  # To store the loss for each batch in every epoch during training. lwn(train_laoder) = nr of batches
@@ -197,9 +198,10 @@ def runTraining(args):
                 desc = f">> Validation ({e: 4d})"
                 loader = val_loader
                 log_loss = log_loss_val
-                log_dloss = log_dloss_val
                 log_focal = log_focal_val
-                log_dice = log_dice_val                
+                log_dloss = log_dloss_val
+                log_dice = log_dice_val
+                log_IOU = log_IOU_val 
                 log_3d_dice = log_3d_dice_val
                 log_3d_IOU = log_3d_IOU_val
                 log_hausdorff = log_hausdorff_val
@@ -257,11 +259,7 @@ def runTraining(args):
                         
                     log_dice[e, j:j + B, :] = dice_coef(gt, pred_seg)  # One DSC value per sample and per class
                     log_IOU[e, j:j + B, :] = iou_coef(gt, pred_seg)  # One iou value per sample and per class
-                        # e: The current epoch.
-                        # j:j + B: This slices the tensor for the current batch, where:
-                        # j is the start index for the current batch in the log_dice array.
-                        # j + B is the end index for this batch (B is the batch size, typically 8 in this case).
-                        # --> log_dice.shape = (num_epochs, num_samples, num_classes)
+
 
                     # cross entropy loss 
                     loss = loss_fn(pred_probs, gt)
@@ -271,15 +269,15 @@ def runTraining(args):
                     dloss = dloss_fn(pred_probs, gt)
                     log_dloss[e, i] = dloss.item() 
 
-                    # Compute focal loss
+                    # focal loss
                     floss = fl_loss_fn(pred_probs, gt)
                     log_focal[e, i] = floss.item()  # One loss value per batch (averaged in the loss)
 
 
+                    # make sure to define correct loss function here 
                     if opt:  # Only for training
-                        floss.backward() #todo focal: change to floss
+                        floss.backward() # changed for floss for using floss
                         opt.step()
-
 
                     if m == 'val':
                         with warnings.catch_warnings():
@@ -296,26 +294,26 @@ def runTraining(args):
                                                     "IoU": f"{log_IOU[e, :j, 1:].mean():05.3f}",
                                                     "Loss": f"{log_loss[e, :i + 1].mean():5.2e}",
                                                     "Focal Loss": f"{log_focal[e, :i + 1].mean():05.3f}",
-                                                    "dLoss": f"{log_dloss[e, :i + 1].mean():5.2e}"}
-                    
+                                                    "dLoss": f"{log_dloss[e, :i + 1].mean():5.2e}"
+                                                    }
                     if K > 2:
                         postfix_dict |= {f"Dice-{k}": f"{log_dice[e, :j, k].mean():05.3f}" for k in range(1, K)}
                         postfix_dict |= {f"IoU-{k}": f"{log_IOU[e, :j, k].mean():05.3f}" for k in range(1, K)}
                     tq_iter.set_postfix(postfix_dict)
-
+            
             if m == 'val':
                 all_predictions_tensor = torch.cat(all_predictions, dim=0)
                 all_gt_tensor = torch.cat(all_gt_slices, dim=0) 
                 path_to_slices = os.path.join("data", "SEGTHOR", "val", "img")
 
-                # calculating the 3d sccores
+                # calculating the 3d sccores 
                 dice_scores_per_patient = volume_dice(all_predictions_tensor, all_gt_tensor, path_to_slices)
                 iou_scores_per_patient = volume_iou(all_predictions_tensor, all_gt_tensor, path_to_slices)
                 hausdorff_per_patient = volume_hausdorff(all_predictions_tensor, all_gt_tensor, path_to_slices, K, hd_95=False)
+                # 95 HAUSDORFF TAKES TOO LONG BTU DOES NOT GIVE ERROR I THINK
                 #_95hausdorf_per_patient = volume_hausdorff(all_predictions_tensor, all_gt_tensor, path_to_slices, K, hd_95=True)
-                # print(dice_scores_per_patient)
                 slice_based_hd_per_patient = slice_hausdorff(all_predictions_tensor, all_gt_tensor, path_to_slices,K)
-
+                
                 for patient_idx, (patient, dice_scores) in enumerate(dice_scores_per_patient.items()):
                     log_3d_dice[e, patient_idx, :] = dice_scores.to(dtype=log_3d_dice.dtype, device=log_3d_dice.device)
 
@@ -326,7 +324,7 @@ def runTraining(args):
                     log_hausdorff[e, patient_idx, :] = hausdorff.to(dtype=log_hausdorff.dtype, device=log_hausdorff.device)
             
 
-                                # for patient_idx, (patient, _95hausdorff) in enumerate(_95hausdorf_per_patient.items()):
+                # for patient_idx, (patient, _95hausdorff) in enumerate(_95hausdorf_per_patient.items()):
                 #     log_95hausdorff[e, patient_idx, :] = _95hausdorff.to(dtype=log_95hausdorff.dtype, device=log_95hausdorff.device)
             
                 for patient_idx, (patient, sb_hd) in enumerate(slice_based_hd_per_patient.items()):
@@ -339,6 +337,7 @@ def runTraining(args):
                             print(f"{metric_name}-{k}: {log_metric[e, :, k].mean():05.3f}\t", end='')   #print haussdorf for all organs 
                     print()
                 
+
                 for metric_name, log_metric in [("HD", log_hausdorff), ("slHD", log_slicehd)]: #("95HD", log_95hausdorff), 
                     print(f"{metric_name}: {log_metric[e, :, :].mean():05.3f}\t", end='')  
                     if K > 2:
@@ -346,8 +345,6 @@ def runTraining(args):
                             print(f"{metric_name}-{k+1}: {log_metric[e, :, k].mean():05.3f}\t", end='')   #print haussdorf for all organs (we exluded the background so therefore k+1 to keep the labelling correct)
                     print()
 
-
-        
         # I save it at each epochs, in case the code crashes or I decide to stop it early
         np.save(args.dest / "loss_tra.npy", log_loss_tra)
         np.save(args.dest / "dloss_tra.npy", log_dloss_tra)

@@ -53,7 +53,6 @@ class PartialCrossEntropy(CrossEntropy):
     def __init__(self, **kwargs):
         super().__init__(idk=[1], **kwargs)
 
-
 # ==== Focal Loss =======
 # Focal loss: handles the cases where CE loss performs badly, namely
 # 1. When class imbalance inherits bias in the process (majority class examples will dominate the loss function and gradient descent)
@@ -104,3 +103,36 @@ class BinaryFocalLoss():
         focal_loss = alpha_factor * focal_weight * ce_loss
 
         return focal_loss.mean() # not sure if I should use .mean()
+class DiceLoss():
+    def __init__(self, **kwargs):
+        # Self.idk is used to filter out some classes of the target mask. Use fancy indexing
+        self.idk = kwargs['idk']
+        self.smooth = 1e-6  # Smoothing factor to avoid division by zero
+        print(f"Initialized {self.__class__.__name__} with {kwargs}")
+
+    def __call__(self, pred_softmax, target):
+        assert pred_softmax.shape == target.shape
+        assert simplex(pred_softmax)
+        assert sset(target, [0, 1])
+
+        pred = pred_softmax[:, self.idk, ...].float()
+        target = target[:, self.idk, ...].float()
+
+        # Intersection: sum of element-wise product
+        intersection = einsum("bkwh,bkwh->", pred, target)
+
+        # Dice Coefficient = 2 * (|X ∩ Y|) / (|X| + |Y|)
+        pred_sum = pred.sum()
+        target_sum = target.sum()
+
+        dice_score = (2. * intersection + self.smooth) / (pred_sum + target_sum + self.smooth)
+
+        # Dice Loss is 1 - Dice Coefficient
+        loss = 1 - dice_score
+
+        return loss
+
+
+class PartialDiceLoss(DiceLoss):
+    def __init__(self, **kwargs):
+        super().__init__(idk=[1], **kwargs)
