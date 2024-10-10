@@ -8,19 +8,29 @@ from preprocessing import Preprocessing
 tableXY = np.array([False])
 current_patient = '03'
 
-for filepath in glob.iglob('data\SEGTHOR\\train\img\*.png'):
-    if filepath[-11:-9] == current_patient:
-        ct_scan = cv.imread(filepath, cv.IMREAD_GRAYSCALE)
+print('Processing images')
 
-        pp = Preprocessing(ct_scan, f'data\SEGTHOR_tmp\\train\img\{filepath[-19:]}')
+try:
+    for filepath in glob.iglob('data/SEGTHOR/train/img/*.png'):
+        if filepath[-11:-9] == current_patient:
+            ct_scan = cv.imread(filepath, cv.IMREAD_GRAYSCALE)
 
-        pp.bilateralFilter()
-        pp.equalize()
-        tableXY = pp.removeTable(tableXY)
-        pp.save()
-        
-    else:
-        tableXY = np.array([False])
+            pp = Preprocessing(ct_scan, f'data/SEGTHOR_tmp/train/img/{filepath[-19:]}')
 
-    current_patient = filepath[-11:-9]
+            pp.bilateralFilter()
+            pp.equalize()
+            tableXY = pp.removeTable(tableXY)
+            pp.save()
+            
+        else:
+            tableXY = np.array([False])
+
+        current_patient = filepath[-11:-9]
+
+    print('Done with the processing of the images')
+
+except:
+    print("An error occured while loading the preprocessing pipeline")
+
+
 
