@@ -5,13 +5,35 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
+import sys
+
+#get named arguments divided by '='
+arg_dic = {}
+for arg in sys.argv:
+    var = arg.split("=")
+    if len(var)==2:
+        arg_dic[var[0]]=var[1]
+
+# Print help if in variables
+if '-h' in sys.argv or '-help' in sys.argv:
+    print('HELP', '\n', 'To set the log file for extraction, use file=path_to_file. Default is "logs/log500.txt"','\n', 'To show plotting, pass var "show"')
+
+file_path = "logs/log500.txt"
+if 'file' in arg_dic:
+    file_path = arg_dic['file']
+
+print(file_path)
+
 epochs = []
 lrs = []
 trs = []
 vls = []
+ious = []
+dpcs = []
+
 
 #https://stackoverflow.com/questions/70429209/how-do-i-use-python-3-to-find-a-certain-text-line-and-copy-the-lines-below-it
-text_lines = open("logs/log500.txt", "r").readlines()
+text_lines = open(file_path, "r").readlines()
 for i, line in enumerate(text_lines):
     #Extract epoch
     if line.find("Epoch")!=-1:  #-1 when missing, reads if Epoch is NOT missing
@@ -32,42 +54,55 @@ for i, line in enumerate(text_lines):
         val_loss_line = line.split(': val_loss ')
         vl = val_loss_line[1].strip()
         vls.append(vl)
+    if line.find("IoU")!=-1:  #-1 when missing, reads if Epoch is NOT missing
+        iou_line = line.split('IoU')
+        iou = iou_line[1].strip()
+        ious.append(iou)
+    if line.find("DICE PER CLASS")!=-1:  #-1 when missing, reads if Epoch is NOT missing
+        dpc_line = line.split('DICE PER CLASS')
+        dpc = dpc_line[1].strip()
+        dpcs.append(dpc)
+
 
 
         
 epochs_np = np.array(epochs, dtype='int')
 print('epochs_np length:', len(epochs_np))
+np.save('logs_out/epochs.npy', epochs_np)
 
-alt_epochs = np.arange(0,1000, dtype='int')
-#print(alt_epochs)
-print('alt_epochs length:', len(alt_epochs))
-np.save('logs_out/epochs.npy', alt_epochs)
+#alt_epochs = np.arange(0,1000, dtype='int')
+#print('alt_epochs length:', len(alt_epochs))
+#np.save('logs_out/epochs.npy', alt_epochs)
 
 lrs_np = np.array(lrs, dtype='float32')
-#print(lrs_np)
 print('lrs_np length:', len(lrs_np))
 np.save('logs_out/learning_rate.npy', lrs_np)
-print(lrs_np.dtype)
 
 trs_np = np.array(trs,dtype='float32')
-print('epochs_np length:', len(trs_np))
+print('trs_np length:', len(trs_np))
 np.save('logs_out/loss_tra.npy', trs_np)
 
 vls_np = np.array(vls,dtype='float32')
-print('epochs_np length:', len(vls_np))
+print('vls_np length:', len(vls_np))
 np.save('logs_out/loss_val.npy',vls_np)
 
+ious_np = np.array(ious,dtype='float32')
+print('ious_np length:', len(ious_np))
+np.save('logs_out/iou.npy',ious_np)
 
-#plt.plot(trs_np)
-#plt.show()
+dpcs_np = np.array(dpcs,dtype='float32')
+print('dpcs_np length:', len(dpcs_np))
+np.save('logs_out/dice.npy',dpcs_np)
 
 
 
 
-plt.title("Line graph")
-#plt.plot(x, y, color="red")
-plt.plot(epochs_np, trs_np, color="red")
-plt.show()
+if 'show' in sys.argv:
+    plt.title("Loss")
+    plt.plot(epochs_np, trs_np, color="red", label='Training loss')
+    plt.plot(epochs_np, vls_np, color="blue", label='Validation loss')
+    plt.legend()
+    plt.show()
 
 
 
