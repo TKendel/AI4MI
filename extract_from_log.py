@@ -5,7 +5,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-import sys
+import sys, os
 
 #get named arguments divided by '='
 arg_dic = {}
@@ -16,7 +16,9 @@ for arg in sys.argv:
 
 # Print help if in variables
 if '-h' in sys.argv or '-help' in sys.argv:
-    print('HELP', '\n', 'To set the log file for extraction, use file=path_to_file. Default is "logs/log500.txt"','\n', 'To show plotting, pass var "show"')
+    print('HELP', '\n', 'To set the log file for extraction, use file=path_to_file. Default is "logs/log500.txt"',
+          '\n', 'To show plotting, pass var "show"',
+          '\n', 'To set the log out directory for extraction, use out=directory_name. Default is "logs_out"')
 
 file_path = "logs/log500.txt"
 if 'file' in arg_dic:
@@ -64,11 +66,13 @@ for i, line in enumerate(text_lines):
         dpcs.append(dpc)
 
 
-
-        
+folder = 'logs_out'
+if 'out' in arg_dic:
+    folder = arg_dic['out']
+ 
 epochs_np = np.array(epochs, dtype='int')
 print('epochs_np length:', len(epochs_np))
-np.save('logs_out/epochs.npy', epochs_np)
+np.save(os.path.join(folder, 'epochs.npy'), epochs_np)
 
 #alt_epochs = np.arange(0,1000, dtype='int')
 #print('alt_epochs length:', len(alt_epochs))
@@ -76,23 +80,24 @@ np.save('logs_out/epochs.npy', epochs_np)
 
 lrs_np = np.array(lrs, dtype='float32')
 print('lrs_np length:', len(lrs_np))
-np.save('logs_out/learning_rate.npy', lrs_np)
+np.save(os.path.join(folder, 'learning_rate.npy'), epochs_np)
 
 trs_np = np.array(trs,dtype='float32')
 print('trs_np length:', len(trs_np))
-np.save('logs_out/loss_tra.npy', trs_np)
+np.save(os.path.join(folder, 'loss_tra.npy'), epochs_np)
 
 vls_np = np.array(vls,dtype='float32')
 print('vls_np length:', len(vls_np))
-np.save('logs_out/loss_val.npy',vls_np)
+np.save(os.path.join(folder, 'loss_val.npy'), epochs_np)
 
 ious_np = np.array(ious,dtype='float32')
 print('ious_np length:', len(ious_np))
-np.save('logs_out/iou.npy',ious_np)
+np.save(os.path.join(folder, 'iou.npy'), epochs_np)
 
 dpcs_np = np.array(dpcs,dtype='float32')
 print('dpcs_np length:', len(dpcs_np))
-np.save('logs_out/dice.npy',dpcs_np)
+np.save(os.path.join(folder, 'dice.npy'), epochs_np)
+
 
 
 
