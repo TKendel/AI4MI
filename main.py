@@ -51,7 +51,7 @@ from utils import (Dcm,
                    iou_coef,
                    save_images)
 
-from metrics import volume_dice, volume_iou, volume_hausdorff, slice_hausdorff
+from metrics import volume_dice, volume_iou, distance_based_metrics # volume_hausdorff, slice_hausdorff, avg_surface_distance
 from losses import CrossEntropy, DiceLoss
 
 
@@ -171,6 +171,7 @@ def runTraining(args):
     log_hausdorff_val = torch.zeros((args.epochs, sampleV, K-1))   # do not calculate hd for background
     log_95hausdorff_val = torch.zeros((args.epochs, sampleV, K-1)) # do not calculate hd for background
     # log_slicehd_val = torch.zeros((args.epochs, sampleV, K-1)) 
+    log_asd_val = torch.zeros((args.epochs, sampleV, K-1)) # do not calculate asd for background
 
     best_dice: float = 0
 
@@ -202,6 +203,7 @@ def runTraining(args):
                 log_hausdorff = log_hausdorff_val
                 log_95hausdorff = log_95hausdorff_val
                 #log_slicehd = log_slicehd_val
+                log_asd = log_asd_val
 
                 all_predictions = [] # store the predictions each epoch
                 all_gt_slices = [] # store the gts each epoch
@@ -296,28 +298,43 @@ def runTraining(args):
                 all_predictions_tensor = torch.cat(all_predictions, dim=0)
                 all_gt_tensor = torch.cat(all_gt_slices, dim=0) 
                 path_to_slices = os.path.join("data", "SEGTHOR", "val", "img")
-
+                
                 # Calculating the 3d sccores 
                 dice_scores_per_patient = volume_dice(all_predictions_tensor, all_gt_tensor, path_to_slices)
                 iou_scores_per_patient = volume_iou(all_predictions_tensor, all_gt_tensor, path_to_slices)
-                hausdorff_per_patient = volume_hausdorff(all_predictions_tensor, all_gt_tensor, path_to_slices, K, hd_95=False)
-                _95hausdorf_per_patient = volume_hausdorff(all_predictions_tensor, all_gt_tensor, path_to_slices, K, hd_95=True)
+                hausdorff_per_patient, _95hausdorf_per_patient, asd_per_patient = distance_based_metrics(all_predictions_tensor, all_gt_tensor, path_to_slices, K)
                 # slice_based_hd_per_patient = slice_hausdorff(all_predictions_tensor, all_gt_tensor, path_to_slices,K)
-                
-                for patient_idx, (patient, dice_scores) in enumerate(dice_scores_per_patient.items()):
+
+                assert (dice_scores_per_patient.keys() == iou_scores_per_patient.keys() == hausdorff_per_patient.keys() == _95hausdorf_per_patient.keys() == asd_per_patient.keys()), "Mismatch in patient keys across different metric dictionaries"
+                for patient_idx, patient in enumerate(dice_scores_per_patient.keys()):
+                    dice_scores = dice_scores_per_patient[patient]
+                    iou_score = iou_scores_per_patient[patient]
+                    hausdorff = hausdorff_per_patient[patient]
+                    _95hausdorff = _95hausdorf_per_patient[patient]
+                    asd = asd_per_patient[patient]
+                    # sb_hd = slice_based_hd_per_patient[patient] 
+
+                    # Store the metrics in the corresponding log tensors
                     log_3d_dice[e, patient_idx, :] = dice_scores.to(dtype=log_3d_dice.dtype, device=log_3d_dice.device)
-
-                for patient_idx, (patient, iou_score) in enumerate(iou_scores_per_patient.items()):
                     log_3d_IOU[e, patient_idx, :] = iou_score.to(dtype=log_3d_IOU.dtype, device=log_3d_IOU.device)
-
-                for patient_idx, (patient, hausdorff) in enumerate(hausdorff_per_patient.items()):
                     log_hausdorff[e, patient_idx, :] = hausdorff.to(dtype=log_hausdorff.dtype, device=log_hausdorff.device)
-            
-                for patient_idx, (patient, _95hausdorff) in enumerate(_95hausdorf_per_patient.items()):
                     log_95hausdorff[e, patient_idx, :] = _95hausdorff.to(dtype=log_95hausdorff.dtype, device=log_95hausdorff.device)
-            
-                # for patient_idx, (patient, sb_hd) in enumerate(slice_based_hd_per_patient.items()):
-                #     log_slicehd[e, patient_idx, :] = sb_hd.to(dtype=log_slicehd.dtype, device=log_slicehd.device)
+                    log_asd[e, patient_idx, :] = asd.to(dtype=log_asd.dtype, device=log_asd.device)
+                    # log_slicehd[e, patient_idx, :] = sb_hd.to(dtype=log_slicehd.dtype, device=log_slicehd.device)  # Uncomment if needed
+
+
+                # for patient_idx, (patient, dice_scores) in enumerate(dice_scores_per_patient.items()):
+                #     log_3d_dice[e, patient_idx, :] = dice_scores.to(dtype=log_3d_dice.dtype, device=log_3d_dice.device)
+                # for patient_idx, (patient, iou_score) in enumerate(iou_scores_per_patient.items()):
+                #     log_3d_IOU[e, patient_idx, :] = iou_score.to(dtype=log_3d_IOU.dtype, device=log_3d_IOU.device)
+                # for patient_idx, (patient, hausdorff) in enumerate(hausdorff_per_patient.items()):
+                #     log_hausdorff[e, patient_idx, :] = hausdorff.to(dtype=log_hausdorff.dtype, device=log_hausdorff.device)
+                # for patient_idx, (patient, _95hausdorff) in enumerate(_95hausdorf_per_patient.items()):
+                #     log_95hausdorff[e, patient_idx, :] = _95hausdorff.to(dtype=log_95hausdorff.dtype, device=log_95hausdorff.device)
+                # # for patient_idx, (patient, sb_hd) in enumerate(slice_based_hd_per_patient.items()):
+                # #     log_slicehd[e, patient_idx, :] = sb_hd.to(dtype=log_slicehd.dtype, device=log_slicehd.device)
+                # for patient_idx, (patient, asd) in enumerate(asd_per_patient.items()):
+                #     log_asd[e, patient_idx, :] = asd.to(dtype=log_asd.dtype, device=log_asd.device)
 
                 # Print the metrics - mean (excluding the background) - per organ 
                 for metric_name, log_metric in [("3dDice", log_3d_dice), ("3dIOU", log_3d_IOU)]:  
@@ -326,9 +343,8 @@ def runTraining(args):
                         for k in range(1, K):
                             print(f"{metric_name}-{k}: {log_metric[e, :, k].mean():05.3f}\t", end='')   
                     print()
-                
-
-                for metric_name, log_metric in [("HD", log_hausdorff), ("95HD", log_95hausdorff)]: # ,("slHD", log_slicehd)
+            
+                for metric_name, log_metric in [("HD", log_hausdorff), ("95HD", log_95hausdorff), ("ASD", log_asd)]: # ,("slHD", log_slicehd)
                     print(f"{metric_name}: {log_metric[e, :, :].mean():05.3f}\t", end='')  
                     if K > 2:
                         for k in range(0, 4):
@@ -351,6 +367,7 @@ def runTraining(args):
         #np.save(args.dest / "slHD.npy", log_slicehd)
         np.save(args.dest / "HD.npy", log_hausdorff)
         np.save(args.dest / "95HD.npy", log_95hausdorff)
+        np.save(args.dest / "ASD.npy", log_asd_val)
         
 
         current_dice: float = log_dice_val[e, :, 1:].mean().item()
