@@ -152,7 +152,7 @@ def runTraining(args):
     if args.mode == "full":
         # loss_fn = CrossEntropy(idk=list(range(K)))  # Supervise both background and foreground
         # Changed to BinaryFocalLoss
-        loss_fn = BinaryFocalLoss(idk=list(range(K))) 
+        #loss_fn = BinaryFocalLoss(idk=list(range(K))) 
         loss_fn = CrossEntropy(idk=list(range(K)))  # Supervise both background and foreground
         dloss_fn = DiceLoss(idk=list(range(K)))  # Supervise both background and foreground
     elif args.mode in ["partial"] and args.dataset in ['SEGTHOR', 'SEGTHOR_STUDENTS']:
