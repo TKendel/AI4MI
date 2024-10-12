@@ -85,8 +85,8 @@ def setup(args) -> tuple[nn.Module, Any, Any, DataLoader, DataLoader, int]:
 
     #adding a learning rate scheduler
     #scheduler = lr_scheduler.PolynomialLR(optimizer, total_iters=5, power=1.0)
-    scheduler = lr_scheduler.CosineAnnealingLR(optimizer, T_max=5)
-    #scheduler = lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.1, patience=10, verbose=True)
+    #scheduler = lr_scheduler.CosineAnnealingLR(optimizer, T_max=5)
+    scheduler = lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.1, patience=10, verbose=True)
 
     # Dataset part
     B: int = datasets_params[args.dataset]['B']
