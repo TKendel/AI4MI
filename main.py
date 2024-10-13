@@ -479,6 +479,8 @@ def runTraining(args):
                 print(f"Stopping early at epoch {e} due to no improvement in {patience} epochs after epoch {best_epoch}")
                 break
 
+            best_epoch = e
+
         #stops if metrics don't improve after 5 epochs above epoch 15
         patience = 5 #how many epochs it needs to wait to decide to stop
 
