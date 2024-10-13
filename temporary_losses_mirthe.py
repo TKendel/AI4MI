@@ -89,6 +89,7 @@ class BinaryFocalLoss():
     def __init__(self, cross_entropy, gamma=2, alpha=0.25, **kwargs):
         """
         Focal Loss for binary classification using the CrossEntropy implementation from above.
+
         Arguments:
         - cross_entropy: The base cross-entropy loss instance to use
         - gamma: Focusing parameter to control how much to focus on hard example
