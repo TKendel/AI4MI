@@ -52,7 +52,7 @@ from utils import (Dcm,
                    save_images)
 
 from metrics import volume_dice, volume_iou, distance_based_metrics, cldice # volume_hausdorff, slice_hausdorff, avg_surface_distance
-from losses import CrossEntropy, DiceLoss
+from losses import CrossEntropy, DiceLoss, BinaryFocalLoss
 
 
 
@@ -144,9 +144,11 @@ def runTraining(args):
     if args.mode == "full":
         loss_fn = CrossEntropy(idk=list(range(K)))  # Supervise both background and foreground
         dloss_fn = DiceLoss(idk=list(range(K)))  # Supervise both background and foreground
+        fl_loss_fn = BinaryFocalLoss(cross_entropy=loss_fn, idk=list(range(K)))
     elif args.mode in ["partial"] and args.dataset in ['SEGTHOR', 'SEGTHOR_STUDENTS']:
         loss_fn = CrossEntropy(idk=[0, 1, 3, 4])  # Do not supervise the heart (class 2)
         dloss_fn = DiceLoss(idk=[0, 1, 3, 4])  # Do not supervise the heart (class 2)
+        fl_loss_fn = BinaryFocalLoss(cross_entropy=loss_fn, idk=[0, 1, 3, 4]) # Do not supervise the heart (class 2)
     else:
         raise ValueError(args.mode, args.dataset)
 
@@ -154,6 +156,7 @@ def runTraining(args):
     # Losses
     log_loss_tra: Tensor = torch.zeros((args.epochs, len(train_loader)))  
     log_dloss_tra: Tensor = torch.zeros((args.epochs, len(train_loader)))  
+    log_focal_tra: Tensor = torch.zeros((args.epochs, len(train_loader)))
     # Metrics 2d
     log_dice_tra: Tensor = torch.zeros((args.epochs, len(train_loader.dataset), K)) 
     log_IOU_tra: Tensor = torch.zeros((args.epochs, len(train_loader.dataset), K))
@@ -161,6 +164,7 @@ def runTraining(args):
     # Losses
     log_loss_val: Tensor = torch.zeros((args.epochs, len(val_loader)))
     log_dloss_val: Tensor = torch.zeros((args.epochs, len(val_loader))) 
+    log_focal_val: Tensor = torch.zeros((args.epochs, len(val_loader)))
     # Metrics 2d
     log_dice_val: Tensor = torch.zeros((args.epochs, len(val_loader.dataset), K))
     log_IOU_val: Tensor = torch.zeros((args.epochs, len(val_loader.dataset), K))
@@ -187,6 +191,7 @@ def runTraining(args):
                 loader = train_loader
                 log_loss = log_loss_tra
                 log_dloss = log_dloss_tra
+                log_focal = log_focal_tra
                 log_dice = log_dice_tra
                 log_IOU = log_IOU_tra
             if m == 'val':
@@ -196,6 +201,7 @@ def runTraining(args):
                 desc = f">> Validation ({e: 4d})"
                 loader = val_loader
                 log_loss = log_loss_val
+                log_focal = log_focal_val
                 log_dloss = log_dloss_val
                 log_dice = log_dice_val
                 log_IOU = log_IOU_val 
@@ -268,10 +274,14 @@ def runTraining(args):
                     dloss = dloss_fn(pred_probs, gt)
                     log_dloss[e, i] = dloss.item() 
 
+                    # focal loss
+                    floss = fl_loss_fn(pred_probs, gt)
+                    log_focal[e, i] = floss.item()
+
 
                     # MAKE SURE TO SPECIFY THE CORRECT LOSS FUNCTION HERE - LOSS, DLOSS, FLOSS
                     if opt:  # Only for training
-                        loss.backward()
+                        floss.backward()
                         opt.step()
 
                     if m == 'val':
@@ -288,6 +298,7 @@ def runTraining(args):
                     postfix_dict: dict[str, str] = {"Dice": f"{log_dice[e, :j, 1:].mean():05.3f}",
                                                     "IoU": f"{log_IOU[e, :j, 1:].mean():05.3f}",
                                                     "Loss": f"{log_loss[e, :i + 1].mean():5.2e}",
+                                                    "Focal Loss": f"{log_focal[e, :i + 1].mean():.5f}",
                                                     "dLoss": f"{log_dloss[e, :i + 1].mean():5.2e}"
                                                     }
                     # Print the means per organ
@@ -351,14 +362,16 @@ def runTraining(args):
                         print(f"{metric_name}-{class_idx}: {log_metric[e, :, k].mean():05.3f}\t", end='')
                     print() 
 
-        # I save it at each epochs, in case the code crashes or I decide to stop it early
+        # I save it at each epoch, in case the code crashes or I decide to stop it early
         np.save(args.dest / "loss_tra.npy", log_loss_tra)
         np.save(args.dest / "dloss_tra.npy", log_dloss_tra)
+        np.save(args.dest / "floss_tra.npy", log_focal_tra)
         np.save(args.dest / "dice_tra.npy", log_dice_tra)
         np.save(args.dest / "iou_tra.npy", log_IOU_tra)
         
         np.save(args.dest / "loss_val.npy", log_loss_val)
         np.save(args.dest / "dloss_val.npy", log_dloss_val)
+        np.save(args.dest / "floss_val.npy", log_focal_val)
         np.save(args.dest / "dice_val.npy", log_dice_val)
         np.save(args.dest / "iou_val.npy", log_IOU_val)
 
