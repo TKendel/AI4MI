@@ -50,7 +50,7 @@ from utils import (Dcm,
                    dice_coef,
                    iou_coef,
                    save_images)
-from metrics import volume_dice, volume_iou, volume_hausdorff, slice_hausdorff
+from metrics import volume_dice, volume_iou # slice_hausdorff, volume_hausdorff # these metrics are not used now
 
 from losses import CrossEntropy, DiceLoss, BinaryFocalLoss
 
@@ -117,7 +117,7 @@ def setup(args) -> tuple[nn.Module, Any, Any, DataLoader, DataLoader, int]:
     train_loader = DataLoader(train_set,
                               batch_size=B,
                               num_workers=args.num_workers,
-                              shuffle=True)  # use to be True --> but because of the way i implemented the 3d dice evaluation to work, the original order needs to be perserved...
+                              shuffle=True)  # use to be True --> but because of the way i implemented the 3d dice evaluation to work, the original order needs to be preserved...
 
     val_set = SliceDataset('val',
                            root_dir,
@@ -163,7 +163,7 @@ def runTraining(args):
 
 
     log_loss_val: Tensor = torch.zeros((args.epochs, len(val_loader)))
-    log_dloss_val: Tensor = torch.zeros((args.epochs, len(train_loader)))  # To store the loss for each batch in every epoch during training. lwn(train_laoder) = nr of batches
+    log_dloss_val: Tensor = torch.zeros((args.epochs, len(val_loader)))  # To store the loss for each batch in every epoch during training. lwn(train_laoder) = nr of batches
     log_focal_val: Tensor = torch.zeros((args.epochs, len(val_loader)))
     log_dice_val: Tensor = torch.zeros((args.epochs, len(val_loader.dataset), K))
     log_IOU_val: Tensor = torch.zeros((args.epochs, len(val_loader.dataset), K))
@@ -309,10 +309,10 @@ def runTraining(args):
                 # calculating the 3d sccores 
                 dice_scores_per_patient = volume_dice(all_predictions_tensor, all_gt_tensor, path_to_slices)
                 iou_scores_per_patient = volume_iou(all_predictions_tensor, all_gt_tensor, path_to_slices)
-                hausdorff_per_patient = volume_hausdorff(all_predictions_tensor, all_gt_tensor, path_to_slices, K, hd_95=False)
+                #commented out since volume_hausdorff is commented out in metrics.py: hausdorff_per_patient = volume_hausdorff(all_predictions_tensor, all_gt_tensor, path_to_slices, K, hd_95=False)
                 # 95 HAUSDORFF TAKES TOO LONG BTU DOES NOT GIVE ERROR I THINK
                 #_95hausdorf_per_patient = volume_hausdorff(all_predictions_tensor, all_gt_tensor, path_to_slices, K, hd_95=True)
-                slice_based_hd_per_patient = slice_hausdorff(all_predictions_tensor, all_gt_tensor, path_to_slices,K)
+                # commented out since volume_hausdorff is commented out in metrics.py: # slice_based_hd_per_patient = slice_hausdorff(all_predictions_tensor, all_gt_tensor, path_to_slices,K)
                 
                 for patient_idx, (patient, dice_scores) in enumerate(dice_scores_per_patient.items()):
                     log_3d_dice[e, patient_idx, :] = dice_scores.to(dtype=log_3d_dice.dtype, device=log_3d_dice.device)
@@ -320,15 +320,17 @@ def runTraining(args):
                 for patient_idx, (patient, iou_score) in enumerate(iou_scores_per_patient.items()):
                     log_3d_IOU[e, patient_idx, :] = iou_score.to(dtype=log_3d_IOU.dtype, device=log_3d_IOU.device)
 
-                for patient_idx, (patient, hausdorff) in enumerate(hausdorff_per_patient.items()):
-                    log_hausdorff[e, patient_idx, :] = hausdorff.to(dtype=log_hausdorff.dtype, device=log_hausdorff.device)
+                # commented out since volume_hausdorff is commented out in metrics.py:
+                #for patient_idx, (patient, hausdorff) in enumerate(hausdorff_per_patient.items()):
+                #    log_hausdorff[e, patient_idx, :] = hausdorff.to(dtype=log_hausdorff.dtype, device=log_hausdorff.device)
             
 
                 # for patient_idx, (patient, _95hausdorff) in enumerate(_95hausdorf_per_patient.items()):
                 #     log_95hausdorff[e, patient_idx, :] = _95hausdorff.to(dtype=log_95hausdorff.dtype, device=log_95hausdorff.device)
             
-                for patient_idx, (patient, sb_hd) in enumerate(slice_based_hd_per_patient.items()):
-                    log_slicehd[e, patient_idx, :] = sb_hd.to(dtype=log_slicehd.dtype, device=log_slicehd.device)
+                # commented out since volume_hausdorff is commented out in metrics.py:
+                #for patient_idx, (patient, sb_hd) in enumerate(slice_based_hd_per_patient.items()):
+                #    log_slicehd[e, patient_idx, :] = sb_hd.to(dtype=log_slicehd.dtype, device=log_slicehd.device)
 
                 for metric_name, log_metric in [("3dDice", log_3d_dice), ("3dIOU", log_3d_IOU)]:  #
                     print(f"{metric_name}: {log_metric[e, :, 1:].mean():05.3f}\t", end='')  #exclude background from mean
