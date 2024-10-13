@@ -323,12 +323,43 @@ def runTraining(args):
         np.save(args.dest / "focal_val.npy", log_focal_val)
 
         np.save(args.dest / "3ddice_val.npy", log_3d_dice_val)
+
+        """
+        Log metrics (Dice, IoU, Hausdorff) and hyperparameter updates at each epoch.
         
+        dice = dice_coefficient(pred, target)
+        iou_val = iou(pred, target)
+        hausdorff = hausdorff_distance(pred.cpu().numpy(), target.cpu().numpy())
+
+        logging.info(f"Epoch {epoch}:")
+        logging.info(f"Dice: {dice:05.3f}")
+        logging.info(f"IoU: {iou_val:05.3f}")
+        logging.info(f"Hausdorff: {hausdorff:05.3f}")
+
+        # Update best metrics if needed
+        if dice > best_metrics["best_dice"]:
+            logging.info(f"New best Dice at epoch {epoch}: {best_metrics['best_dice']:05.3f} -> {dice:05.3f}")
+            best_metrics["best_dice"] = dice
+            best_metrics["best_epoch"] = epoch
+
+        if iou_val > best_metrics["best_iou"]:
+            logging.info(f"New best IoU at epoch {epoch}: {best_metrics['best_iou']:05.3f} -> {iou_val:05.3f}")
+            best_metrics["best_iou"] = iou_val
+
+        if hausdorff < best_metrics["best_hausdorff"]:
+            logging.info(f"New best Hausdorff distance at epoch {epoch}: {best_metrics['best_hausdorff']:05.3f} -> {hausdorff:05.3f}")
+            best_metrics["best_hausdorff"] = hausdorff
+
+        logging.info("-----------")
+        """
+        best_epoch = 0
+        patience = 5    
 
         current_dice: float = log_dice_val[e, :, 1:].mean().item()
         if current_dice > best_dice:
             print(f">>> Improved dice at epoch {e}: {best_dice:05.3f}->{current_dice:05.3f} DSC")
             best_dice = current_dice
+            best_epoch = e
             with open(args.dest / "best_epoch.txt", 'w') as f:
                     f.write(str(e))
 
@@ -339,6 +370,12 @@ def runTraining(args):
 
             torch.save(net, args.dest / "bestmodel.pkl")
             torch.save(net.state_dict(), args.dest / "bestweights.pt")
+        
+        #stops if metrics don't improve after 5 epochs above epoch 15
+        if e >= 15:
+            if (e - best_epoch) >= 5:
+                print(f"Stopping early at epoch {e} due to no improvement in {patience} epochs after epoch {best_epoch}")
+                break
 
 
 def main():
