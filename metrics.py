@@ -3,6 +3,7 @@ import numpy as np
 from utils import count_slices_per_patient, return_volumes, dice_batch, iou_batch
 from scipy.spatial.distance import directed_hausdorff
 import seg_metrics.seg_metrics as sg
+from skimage.morphology import skeletonize
 
 
 def volume_dice(predictions, gts, path_to_slices):
@@ -110,8 +111,41 @@ def distance_based_metrics(predictions, gts, path_to_slices, K):
     return hausdorff_per_patient, _95hausdorff_per_patient, asd_per_patient
 
 
+def cl_score(v, s):
+    return np.sum(v * s) / np.sum(s)
+
+def cldice(predictions, gts, path_to_slices):
+    prediction_patient_volumes, gt_patient_volumes = return_volumes(predictions, gts, path_to_slices)
+    cldice_per_patient = {}
+    # Loop over each patient 
+    for (patient_pred, volumepred), (patient_gt, volumegt) in zip(prediction_patient_volumes.items(), gt_patient_volumes.items()):
+        assert patient_pred == patient_gt, "Mismatch in patient prediction and ground truth"
+
+        cldice_patient = []
+        # Only calculate this score for esophagus and aorta
+        for class_idx in [1,4]:
+            pred_volume = volumepred[:, class_idx, :, :].numpy()  
+            gt_volume = volumegt[:, class_idx, :, :].numpy()
+            
+            # Check if both volumes are empty (no segmentation)
+            if np.sum(pred_volume) == 0 and np.sum(gt_volume) == 0:
+                cldice_score = 1.0  # Both empty, perfect match 
+            # If one volume is empty, use worst score
+            elif np.sum(pred_volume) == 0 or np.sum(gt_volume) == 0:
+                cldice_score = 0.0
+            else:
+                tprec = cl_score(gt_volume,skeletonize(pred_volume)) # susceptible to false positives 
+                tsens = cl_score(pred_volume,skeletonize(gt_volume)) # susceptible to false negatives.
+                if tprec + tsens == 0:
+                    cldice_score = 0.0
+                else:
+                    cldice_score = 2 * ((tprec * tsens) / (tprec + tsens))
+            cldice_patient.append(cldice_score)
+        cldice_per_patient[patient_pred] = torch.tensor(cldice_patient, dtype=torch.float32)
+    return cldice_per_patient
+
 '''
-for some reason this takes so long 
+I think this might be too intensive because it takes very long - not used for now
 '''
 # def standard_metrics(predictions, gts, path_to_slices, K):
 #     """
@@ -276,7 +310,9 @@ used to be called in main.py like this:
 
 
 
-# BECAUSE THE HAUSDORFF ON VOLUME WORKS, WE WILL NO LONGER USE THIS SLIC BASED ONE
+'''
+BECAUSE THE HAUSDORFF ON VOLUME WORKS, WE WILL NO LONGER USE THIS SLIC BASED ONE
+'''
 # def slice_hausdorff(predictions, gts, path_to_slices, K):
 #     """
 #     Compute the Hausdorff distance between predicted and ground truth slices
