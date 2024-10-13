@@ -80,13 +80,13 @@ def setup(args) -> tuple[nn.Module, Any, Any, DataLoader, DataLoader, int]:
    #learning rate & adam optimizer
     lr = 0.0005
     #optimizer = torch.optim.Adam(net.parameters(), lr=lr, betas=(0.9, 0.999))
-    #optimizer = torch.optim.AdamW(net.parameters(), lr=lr, betas=(0.9, 0.999), weight_decay=0.01)
-    optimizer = torch.optim.SGD(net.parameters(), lr=lr, weight_decay=0.01)
+    optimizer = torch.optim.AdamW(net.parameters(), lr=lr, betas=(0.9, 0.999), weight_decay=0.01)
+    #optimizer = torch.optim.SGD(net.parameters(), lr=lr, weight_decay=0.01)
 
     #adding a learning rate scheduler
     #scheduler = lr_scheduler.PolynomialLR(optimizer, total_iters=5, power=1.0)
     #scheduler = lr_scheduler.CosineAnnealingLR(optimizer, T_max=5)
-    scheduler = lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.1, patience=10, verbose=True)
+    #scheduler = lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.1, patience=10, verbose=True)
 
     # Dataset part
     B: int = datasets_params[args.dataset]['B']
@@ -351,10 +351,21 @@ def runTraining(args):
             best_metrics["best_hausdorff"] = hausdorff
 
         logging.info("-----------")
+
+        np.save(args.dest / "3ddice_val.npy", log_3d_dice_val)
+        np.save(args.dest / "3dIOU_val.npy", log_3d_IOU_val)
+        #np.save(args.dest / "slHD.npy", log_slicehd)
+        np.save(args.dest / "HD_val.npy", log_hausdorff)
+        np.save(args.dest / "95HD_val.npy", log_95hausdorff)
+        np.save(args.dest / "ASD_val.npy", log_asd_val)
+        np.save(args.dest / "cldice_val.npy", log_cldice)
         """
         best_epoch = 0
         patience = 5    
 
+        #current_asd: float = log_asd_val[e, :, 1:].mean().item()
+        #current_95: float = log_95hausdorff[e, :, 1:].mean().item()
+        #current_iou = log_3d_IOU_val[e, :, 1:].mean().item()
         current_dice: float = log_dice_val[e, :, 1:].mean().item()
         if current_dice > best_dice:
             print(f">>> Improved dice at epoch {e}: {best_dice:05.3f}->{current_dice:05.3f} DSC")
