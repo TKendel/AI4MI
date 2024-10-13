@@ -422,6 +422,8 @@ def runTraining(args):
             torch.save(net, args.dest / "bestmodel.pkl")
             torch.save(net.state_dict(), args.dest / "bestweights.pt")
 
+            best_epoch = e
+
         #stops if metrics don't improve after 5 epochs above epoch 15
         patience = 5 #how many epochs it needs to wait to decide to stop
 
