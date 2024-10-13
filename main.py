@@ -177,7 +177,6 @@ def runTraining(args):
     log_95hausdorff_val = torch.zeros((args.epochs, sampleV, K-1)) # do not calculate hd for background
     # log_slicehd_val = torch.zeros((args.epochs, sampleV, K-1)) 
 
-    best_dice: float = 0
 
     for e in range(args.epochs):
         for m in ['train', 'val']:
@@ -370,15 +369,12 @@ def runTraining(args):
         #np.save(args.dest / "slHD.npy", log_slicehd)
         np.save(args.dest / "HD.npy", log_hausdorff)
         np.save(args.dest / "95HD.npy", log_95hausdorff)
-        
-        dice = dice_coefficient(pred, target)
-        iou_val = iou(pred, target)
-        hausdorff = hausdorff_distance(pred.cpu().numpy(), target.cpu().numpy())
 
-        logging.info(f"Epoch {epoch}:")
-        logging.info(f"Dice: {dice:05.3f}")
-        logging.info(f"IoU: {iou_val:05.3f}")
-        logging.info(f"Hausdorff: {hausdorff:05.3f}")
+        #initialize the 'best scores'
+        best_dice: float = 0
+        best_iou: float = 0
+        best_95hd: float = float('inf')  # Hausdorff is minimized, so initialize to infinity
+        best_3d_dice: float = 0
 
         # Update best metrics if needed
         if dice > best_metrics["best_dice"]:
@@ -411,22 +407,48 @@ def runTraining(args):
         #current_95: float = log_95hausdorff[e, :, 1:].mean().item()
         #current_iou = log_3d_IOU_val[e, :, 1:].mean().item()
         current_dice: float = log_dice_val[e, :, 1:].mean().item()
-        if current_dice > best_dice:
-            print(f">>> Improved dice at epoch {e}: {best_dice:05.3f}->{current_dice:05.3f} DSC")
-            best_dice = current_dice
-            best_epoch = e
-            with open(args.dest / "best_epoch.txt", 'w') as f:
-                    f.write(str(e))
+        current_iou: float = log_3d_IOU_val[e, :, 1:].mean().item()
+        current_3d_dice: float = log_3d_dice_val[e, :, 1:].mean().item()
+        current_95hd: float = log_95hausdorff[e, :, 1:].mean().item()
 
+        
+        # Check for improvements
+        if (current_dice > best_dice) and (current_3d_dice > best_3d_dice) and (current_iou > best_iou) and (current_95hd < best_95hd):
+            print(f">>> Improved metrics at epoch {e}:")
+            print(f"    Dice: {best_dice:05.3f} -> {current_dice:05.3f} DSC")
+            print(f"    Dice: {best_3d_dice:05.3f} -> {current_3d_dice:05.3f} DSC")
+            print(f"    IoU: {best_iou:05.3f} -> {current_iou:05.3f} IoU")
+            print(f"    Hausdorff: {best_95hd:05.3f} -> {current_95hd:05.3f} HD")
+
+            # Update best metrics
+            best_dice = current_dice
+            best_3d_dice = current_3d_dice
+            best_iou = current_iou
+            best_95hd = current_95hd
+
+            # Write the best epoch number to a file
+            with open(args.dest / "best_epoch.txt", 'w') as f:
+                f.write(str(e))
+
+            # Handle the directory for the best epoch
             best_folder = args.dest / "best_epoch"
             if best_folder.exists():
-                    rmtree(best_folder)
+                rmtree(best_folder)
             copytree(args.dest / f"iter{e:03d}", Path(best_folder))
 
+            # Save the model and its weights
             torch.save(net, args.dest / "bestmodel.pkl")
             torch.save(net.state_dict(), args.dest / "bestweights.pt")
         
         #stops if metrics don't improve after 5 epochs above epoch 15
+        if e >= 15:
+            if (e - best_epoch) >= 5:
+                print(f"Stopping early at epoch {e} due to no improvement in {patience} epochs after epoch {best_epoch}")
+                break
+
+        #stops if metrics don't improve after 5 epochs above epoch 15
+        patience = 5 #how many epochs it needs to wait to decide to stop
+
         if e >= 15:
             if (e - best_epoch) >= 5:
                 print(f"Stopping early at epoch {e} due to no improvement in {patience} epochs after epoch {best_epoch}")
