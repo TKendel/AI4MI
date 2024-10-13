@@ -294,7 +294,7 @@ def runTraining(args):
                     postfix_dict: dict[str, str] = {"Dice": f"{log_dice[e, :j, 1:].mean():05.3f}",
                                                     "IoU": f"{log_IOU[e, :j, 1:].mean():05.3f}",
                                                     "Loss": f"{log_loss[e, :i + 1].mean():5.2e}",
-                                                    "Focal Loss": f"{log_focal[e, :i + 1].mean():05.3f}",
+                                                    "Focal Loss": f"{log_focal[e, :i + 1].mean():.5f}",
                                                     "dLoss": f"{log_dloss[e, :i + 1].mean():5.2e}"
                                                     }
                     if K > 2:
