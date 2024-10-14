@@ -7,5 +7,3 @@ ai4mi/
 bin/
 __pycache__/
 grad_figs/*.png
-.job
-.out
