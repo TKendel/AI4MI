@@ -8,4 +8,4 @@ scikit-image
 matplotlib
 nnunetv2
 UNet
-TensorFlow
+seg-metrics==1.2.8
