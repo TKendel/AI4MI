@@ -28,7 +28,7 @@ parameter_object.AddParameterMap(parameter_map_affine)
 # fixed_image = itk.imread('data\SEGTHOR_tmp\\train\gt\Patient_27_0077.png')
 # fixed_image = itk.imread('test1.png', itk.F)
 
-fixed_mask = itk.imread('3DModels\GT2.nii.gz_1.nii', itk.UC) # 3D heart segment saved separately
+fixed_mask = itk.imread('3DModels\GT2.nii.gz_1.nii', itk.UC)
 moving_mask = itk.imread('3DModels\GT.nii.gz_1.nii', itk.UC)
 
 test_mask = itk.imread('3DModels\GT.nii.gz_6_1.nii', itk.UC)

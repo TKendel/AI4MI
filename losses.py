@@ -24,8 +24,9 @@
 
 
 from torch import einsum
-
+from torch.nn import functional as F
 from utils import simplex, sset
+import tensorflow as tf
 
 
 class CrossEntropy():
@@ -106,7 +107,7 @@ class DiceLoss():
     def __init__(self, **kwargs):
         # Self.idk is used to filter out some classes of the target mask. Use fancy indexing
         self.idk = kwargs['idk']
-        self.smooth = 1e-10  # Smoothing factor to avoid division by zero
+        self.smooth = 1e-6  # Smoothing factor to avoid division by zero
         print(f"Initialized {self.__class__.__name__} with {kwargs}")
 
     def __call__(self, pred_softmax, target):
@@ -117,14 +118,17 @@ class DiceLoss():
         pred = pred_softmax[:, self.idk, ...].float()
         target = target[:, self.idk, ...].float()
 
-        intersection = einsum("bk...,bk...->bk", pred, target)
-        pred_sum = einsum("bk...->bk", pred)
-        target_sum = einsum("bk...->bk", target)
+        # Intersection: sum of element-wise product
+        intersection = einsum("bkwh,bkwh->", pred, target)
+
+        # Dice Coefficient = 2 * (|X ∩ Y|) / (|X| + |Y|)
+        pred_sum = pred.sum()
+        target_sum = target.sum()
 
         dice_score = (2. * intersection + self.smooth) / (pred_sum + target_sum + self.smooth)
 
         # Dice Loss is 1 - Dice Coefficient
-        loss = 1 - dice_score.mean()
+        loss = 1 - dice_score
 
         return loss
 
@@ -132,57 +136,3 @@ class DiceLoss():
 class PartialDiceLoss(DiceLoss):
     def __init__(self, **kwargs):
         super().__init__(idk=[1], **kwargs)
-
-
-class BinaryFocalLoss():
-    def __init__(self, cross_entropy, gamma=2, alpha=0.25, **kwargs):
-        """
-        Focal Loss for binary classification using the CrossEntropy implementation from above.
-        Arguments:
-        - cross_entropy: The base cross-entropy loss instance to use
-        - gamma: Focusing parameter to control how much to focus on hard example
-        - alpha: Balancing factor to adjust for class imbalance (alpha for class 1, 1-alpha for class 0)
-        """
-        self.cross_entropy = cross_entropy 
-        self.gamma = gamma
-        self.alpha = alpha
-        self.idk = kwargs['idk'] # Self.idk is used to filter out some classes of the target mask. Use fancy indexing
-        
-        print(f"Initialized {self.__class__.__name__} with gamma={self.gamma}, alpha={self.alpha}")
-
-    def __call__(self, pred_softmax, weak_target):
-        """
-        Arguments:
-        - pred_softmax: The predicted softmax probabilities from the model
-        - weak_target: The ground truth binary target mask, containing binary labels (0 or 1)
-        """
-
-        assert pred_softmax.shape == weak_target.shape
-        assert simplex(pred_softmax)
-        assert sset(weak_target, [0, 1])
-
-        # Compute the base CE loss by calling instance of the existing CrossEntropy class
-        ce_loss = self.cross_entropy(pred_softmax, weak_target)
-
-        # Get the probability of the true class for each pixel
-        # since we're dealing with multiple classes and want to compute the loss only for certain organs, need to use [:, self.idk, ...]
-        # self.idk contains the indices of the classes we're interested in, so we can compute the loss only for those classes
-        prob_true = pred_softmax[:, self.idk, ...] * weak_target[:, self.idk, ...] + \
-                    (1 - pred_softmax[:, self.idk, ...]) * (1 - weak_target[:, self.idk, ...])
-
-        # Calculate focal weight: (1 - prob_true) ^ gamma
-        focal_weight = (1 - prob_true) ** self.gamma
-
-        # Apply the alpha balancing factor: α for class 1, (1 - α) for class 0
-        alpha_factor = weak_target[:, self.idk, ...] * self.alpha + \
-                       (1 - weak_target[:, self.idk, ...]) * (1 - self.alpha)
-
-        # Now calculate the focal loss = alpha_factor * focal_weight * ce_loss
-        focal_loss = alpha_factor * focal_weight * ce_loss
-
-        # Optionally: apply normalization instead of taking the mean
-        # Normalize focal_loss by the sum of the mask or relevant pixels
-        # normalized_loss = focal_loss / (weak_target[:, self.idk, ...].sum() + 1e-10)
-        # return normalized_loss # or normalized_loss.mean()
-
-        return focal_loss.mean() # reduce loss to a single scalar value
