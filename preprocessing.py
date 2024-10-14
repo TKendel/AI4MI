@@ -14,7 +14,7 @@ class Preprocessing:
         Normalize image by adding a low and high value which should be included in the grayscale colour range,
         If it is a 0, 1 the output will have the darkest black from the inital and whites whites typically resulting in bones! 
         '''
-        self.img = cv.normalize(self.img, None, 0, 10, cv.NORM_MINMAX)
+        self.img = cv.normalize(self.img, None, 0, 255, cv.NORM_MINMAX)
 
     def equalize(self):
         '''
