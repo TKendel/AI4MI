@@ -203,8 +203,6 @@ def runTraining(args):
                 log_dloss = log_dloss_tra
                 log_focal = log_focal_tra
                 log_dice = log_dice_tra
-                # Added for BinaryFocalLoss
-                log_focal = log_focal_tra
                 log_IOU = log_IOU_tra
             if m == 'val':
                 net.eval()
@@ -216,8 +214,6 @@ def runTraining(args):
                 log_focal = log_focal_val
                 log_dloss = log_dloss_val
                 log_dice = log_dice_val
-                # Added loss for BinaryFocalLoss
-                log_focal = log_focal_val
                 log_IOU = log_IOU_val 
                 log_3d_dice = log_3d_dice_val
                 log_3d_IOU = log_3d_IOU_val
@@ -382,16 +378,6 @@ def runTraining(args):
         np.save(args.dest / "dloss_tra.npy", log_dloss_tra)
         np.save(args.dest / "floss_tra.npy", log_focal_tra)
         np.save(args.dest / "dice_tra.npy", log_dice_tra)
-        np.save(args.dest / "focal_tra.npy", log_focal_tra)
-        np.save(args.dest / "loss_val.npy", log_loss_val)
-        np.save(args.dest / "dloss_val.npy", log_dloss_val)
-        np.save(args.dest / "dice_val.npy", log_dice_val)
-        np.save(args.dest / "focal_val.npy", log_focal_val)
-
-        np.save(args.dest / "3ddice_val.npy", log_3d_dice_val)
-
-        """
-        Log metrics (Dice, IoU, Hausdorff) and hyperparameter updates at each epoch.
         np.save(args.dest / "iou_tra.npy", log_IOU_tra)
         
         np.save(args.dest / "loss_val.npy", log_loss_val)
@@ -407,7 +393,6 @@ def runTraining(args):
         np.save(args.dest / "95HD_val.npy", log_95hausdorff)
         np.save(args.dest / "ASD_val.npy", log_asd_val)
         np.save(args.dest / "cldice_val.npy", log_cldice)
-        
 
         
 
@@ -477,6 +462,16 @@ def runTraining(args):
         #stops if metrics don't improve after 5 epochs above epoch 15
         if e >= 15:
             if (e - best_epoch) >= 5:
+                print(f"Stopping early at epoch {e} due to no improvement in {patience} epochs after epoch {best_epoch}")
+                break
+
+            best_epoch = e
+
+        #stops if metrics don't improve after 5 epochs above epoch 15
+        patience = 5 #how many epochs it needs to wait to decide to stop
+
+        if e >= 15:
+            if (e - best_epoch) >= patience:
                 print(f"Stopping early at epoch {e} due to no improvement in {patience} epochs after epoch {best_epoch}")
                 break
 
