@@ -16,23 +16,25 @@ try:
         if filepath[-11:-9] == current_patient:
             ct_scan = cv.imread(filepath, cv.IMREAD_GRAYSCALE)
 
-        pp = Preprocessing(ct_scan, f'data\SEGTHOR_tmp\\train\img\{filepath[-19:]}')
-        pp.bilateralFilter()
-        tableXY = pp.removeTable(tableXY)
-        pp.equalize()
-        # pp.gammaCorrection(2)
-        pp.save()
-        
-    else:
-        tableXY = np.array([False])
-        ct_scan = cv.imread(filepath, cv.IMREAD_GRAYSCALE)
+            pp = Preprocessing(ct_scan, f'data/SEGTHOR_tmp/train/img/{filepath[-19:]}')
 
-        pp = Preprocessing(ct_scan, f'data\SEGTHOR_tmp\\train\img\{filepath[-19:]}')
-        pp.bilateralFilter()
-        tableXY = pp.removeTable(tableXY)
-        pp.equalize()
-        # pp.gammaCorrection(2)
-        pp.save()
+            pp.bilateralFilter()
+            tableXY = pp.removeTable(tableXY)
+            pp.equalize()
+            # pp.gammaCorrection(2)
+            pp.save()
+            
+        else:
+            tableXY = np.array([False])
+            ct_scan = cv.imread(filepath, cv.IMREAD_GRAYSCALE)
+
+            pp = Preprocessing(ct_scan, f'data/SEGTHOR_tmp/train/img/{filepath[-19:]}')
+
+            pp.bilateralFilter()
+            tableXY = pp.removeTable(tableXY)
+            pp.equalize()
+            # pp.gammaCorrection(2)
+            pp.save()
 
         current_patient = filepath[-11:-9]
 

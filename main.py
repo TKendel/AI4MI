@@ -57,6 +57,7 @@ from losses import CrossEntropy, DiceLoss
 from losses import (CrossEntropy)
 from losses import (BinaryFocalLoss) # added
 
+from losses import CrossEntropy, DiceLoss, BinaryFocalLoss
 
 datasets_params: dict[str, dict[str, Any]] = {}
 # K for the number of classes
@@ -282,14 +283,18 @@ def runTraining(args):
                     # Compute focal loss
                     loss = loss_fn(pred_probs, gt)
                     log_loss[e, i] = loss.item()  # One loss value per batch (averaged in the loss)
-                    # todo focal: compute focal loss
-                    # floss = binary_focal_loss(pred_probs, gt)
-                    # log_loss[e, i] = floss.item()  # One loss value per batch (averaged in the loss)
+
+                    # dice loss
                     dloss = dloss_fn(pred_probs, gt)
                     log_dloss[e, i] = dloss.item() 
 
+                    # Compute focal loss
+                    floss = fl_loss_fn(pred_probs, gt)
+                    log_focal[e, i] = floss.item()  # One loss value per batch (averaged in the loss)
+
+
                     if opt:  # Only for training
-                        loss.backward() #todo focal: change to floss
+                        floss.backward() #todo focal: change to floss
                         opt.step()
 
 
