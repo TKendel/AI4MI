@@ -54,8 +54,6 @@ from utils import (Dcm,
 from metrics import volume_dice, volume_iou, distance_based_metrics, cldice # volume_hausdorff, slice_hausdorff, avg_surface_distance
 from losses import CrossEntropy, DiceLoss, BinaryFocalLoss
 
-from losses import (CrossEntropy)
-from losses import (BinaryFocalLoss) # added
 
 
 datasets_params: dict[str, dict[str, Any]] = {}
@@ -144,9 +142,6 @@ def runTraining(args):
     net, optimizer, device, train_loader, val_loader, K = setup(args)
 
     if args.mode == "full":
-        # loss_fn = CrossEntropy(idk=list(range(K)))  # Supervise both background and foreground
-        # Changed to BinaryFocalLoss
-        #loss_fn = BinaryFocalLoss(idk=list(range(K))) 
         loss_fn = CrossEntropy(idk=list(range(K)))  # Supervise both background and foreground
         dloss_fn = DiceLoss(idk=list(range(K)))  # Supervise both background and foreground
         fl_loss_fn = BinaryFocalLoss(cross_entropy=loss_fn, idk=list(range(K)))
@@ -294,7 +289,6 @@ def runTraining(args):
                         loss.backward()
                         opt.step()
 
-
                     if m == 'val':
                         with warnings.catch_warnings():
                             warnings.filterwarnings('ignore', category=UserWarning)
@@ -396,36 +390,6 @@ def runTraining(args):
 
         
 
-        # Update best metrics if needed
-        if dice > best_metrics["best_dice"]:
-            logging.info(f"New best Dice at epoch {epoch}: {best_metrics['best_dice']:05.3f} -> {dice:05.3f}")
-            best_metrics["best_dice"] = dice
-            best_metrics["best_epoch"] = epoch
-
-        if iou_val > best_metrics["best_iou"]:
-            logging.info(f"New best IoU at epoch {epoch}: {best_metrics['best_iou']:05.3f} -> {iou_val:05.3f}")
-            best_metrics["best_iou"] = iou_val
-
-        if hausdorff < best_metrics["best_hausdorff"]:
-            logging.info(f"New best Hausdorff distance at epoch {epoch}: {best_metrics['best_hausdorff']:05.3f} -> {hausdorff:05.3f}")
-            best_metrics["best_hausdorff"] = hausdorff
-
-        logging.info("-----------")
-
-        np.save(args.dest / "3ddice_val.npy", log_3d_dice_val)
-        np.save(args.dest / "3dIOU_val.npy", log_3d_IOU_val)
-        #np.save(args.dest / "slHD.npy", log_slicehd)
-        np.save(args.dest / "HD_val.npy", log_hausdorff)
-        np.save(args.dest / "95HD_val.npy", log_95hausdorff)
-        np.save(args.dest / "ASD_val.npy", log_asd_val)
-        np.save(args.dest / "cldice_val.npy", log_cldice)
-        """
-        best_epoch = 0
-        patience = 5    
-
-        #current_asd: float = log_asd_val[e, :, 1:].mean().item()
-        #current_95: float = log_95hausdorff[e, :, 1:].mean().item()
-        #current_iou = log_3d_IOU_val[e, :, 1:].mean().item()
         current_dice: float = log_dice_val[e, :, 1:].mean().item()
         current_iou: float = log_3d_IOU_val[e, :, 1:].mean().item()
         current_3d_dice: float = log_3d_dice_val[e, :, 1:].mean().item()
@@ -458,22 +422,6 @@ def runTraining(args):
             # Save the model and its weights
             torch.save(net, args.dest / "bestmodel.pkl")
             torch.save(net.state_dict(), args.dest / "bestweights.pt")
-        
-        #stops if metrics don't improve after 5 epochs above epoch 15
-        if e >= 15:
-            if (e - best_epoch) >= 5:
-                print(f"Stopping early at epoch {e} due to no improvement in {patience} epochs after epoch {best_epoch}")
-                break
-
-            best_epoch = e
-
-        #stops if metrics don't improve after 5 epochs above epoch 15
-        patience = 5 #how many epochs it needs to wait to decide to stop
-
-        if e >= 15:
-            if (e - best_epoch) >= patience:
-                print(f"Stopping early at epoch {e} due to no improvement in {patience} epochs after epoch {best_epoch}")
-                break
 
             best_epoch = e
 
