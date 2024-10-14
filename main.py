@@ -179,6 +179,12 @@ def runTraining(args):
     log_cldice_val = torch.zeros((args.epochs, sampleV, 2)) #only for esophagus and aorta
 
 
+    #initialize the 'best scores'
+    best_dice: float = 0
+    best_iou: float = 0
+    best_95hd: float = float('inf')  # Hausdorff is minimized, so initialize to infinity
+    best_3d_dice: float = 0
+    
     for e in range(args.epochs):
         for m in ['train', 'val']:
             # Because we cannot get python 3.11 running in Snellius, we changed the match cases to if statements
@@ -280,7 +286,7 @@ def runTraining(args):
 
                     # MAKE SURE TO SPECIFY THE CORRECT LOSS FUNCTION HERE - LOSS, DLOSS, FLOSS
                     if opt:  # Only for training
-                        floss.backward()
+                        loss.backward()
                         opt.step()
 
                     if m == 'val':
@@ -297,7 +303,7 @@ def runTraining(args):
                     postfix_dict: dict[str, str] = {"Dice": f"{log_dice[e, :j, 1:].mean():05.3f}",
                                                     "IoU": f"{log_IOU[e, :j, 1:].mean():05.3f}",
                                                     "Loss": f"{log_loss[e, :i + 1].mean():5.2e}",
-                                                    "Focal Loss": f"{log_focal[e, :i + 1].mean():.5f}",
+                                                    "Focal Loss": f"{log_focal[e, :i + 1].mean():5.2e}",
                                                     "dLoss": f"{log_dloss[e, :i + 1].mean():5.2e}"
                                                     }
                     # Print the means per organ
@@ -382,18 +388,13 @@ def runTraining(args):
         np.save(args.dest / "ASD_val.npy", log_asd_val)
         np.save(args.dest / "cldice_val.npy", log_cldice)
 
-        #initialize the 'best scores'
-        best_dice: float = 0
-        best_iou: float = 0
-        best_95hd: float = float('inf')  # Hausdorff is minimized, so initialize to infinity
-        best_3d_dice: float = 0
+        
 
         current_dice: float = log_dice_val[e, :, 1:].mean().item()
         current_iou: float = log_3d_IOU_val[e, :, 1:].mean().item()
         current_3d_dice: float = log_3d_dice_val[e, :, 1:].mean().item()
         current_95hd: float = log_95hausdorff[e, :, 1:].mean().item()
 
-        
         # Check for improvements
         if (current_dice > best_dice) and (current_3d_dice > best_3d_dice) and (current_iou > best_iou) and (current_95hd < best_95hd):
             print(f">>> Improved metrics at epoch {e}:")
@@ -428,7 +429,7 @@ def runTraining(args):
         patience = 5 #how many epochs it needs to wait to decide to stop
 
         if e >= 15:
-            if (e - best_epoch) >= 5:
+            if (e - best_epoch) >= patience:
                 print(f"Stopping early at epoch {e} due to no improvement in {patience} epochs after epoch {best_epoch}")
                 break
 
