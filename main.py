@@ -76,8 +76,8 @@ def setup(args) -> tuple[nn.Module, Any, Any, DataLoader, DataLoader, int]:
 
     # Learning rate & adam optimizer
     lr = 0.0005
-    optimizer = torch.optim.Adam(net.parameters(), lr=lr, betas=(0.9, 0.999))
-    # optimizer = torch.optim.AdamW(net.parameters(), lr=lr, betas=(0.9, 0.999), weight_decay=0.01)
+    #optimizer = torch.optim.Adam(net.parameters(), lr=lr, betas=(0.9, 0.999))
+    optimizer = torch.optim.AdamW(net.parameters(), lr=lr, betas=(0.9, 0.999), weight_decay=0.01)
 
     # Adding a learning rate scheduler
     #scheduler = lr_scheduler.PolynomialLR(optimizer, total_iters=5, power=1.0)
@@ -396,7 +396,7 @@ def runTraining(args):
         current_95hd: float = log_95hausdorff[e, :, 1:].mean().item()
 
         # Check for improvements
-        if (current_dice > best_dice) and (current_3d_dice > best_3d_dice) and (current_iou > best_iou) and (current_95hd < best_95hd):
+        if (current_dice > best_dice) or (current_3d_dice > best_3d_dice) or (current_iou > best_iou) or (current_95hd < best_95hd):
             print(f">>> Improved metrics at epoch {e}:")
             print(f"    Dice: {best_dice:05.3f} -> {current_dice:05.3f} DSC")
             print(f"    Dice: {best_3d_dice:05.3f} -> {current_3d_dice:05.3f} DSC")
