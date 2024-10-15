@@ -81,11 +81,11 @@ class Preprocessing:
         '''
         self.img = adjust_log(self.img, log_value)
 
-    def CLAHEClipping(self):
+    def CLAHEClipping(self, clipLimit=2.0):
         '''
         Apply CLAHE clipping to image 
         '''
-        clahe = cv.createCLAHE(clipLimit=2.0, tileGridSize=(8,8))
+        clahe = cv.createCLAHE(clipLimit=clipLimit, tileGridSize=(8,8))
         self.img = clahe.apply(self.img)
 
     def closing(self):
