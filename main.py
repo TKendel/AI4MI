@@ -280,8 +280,8 @@ def runTraining(args):
                     log_dloss[e, i] = dloss.item() 
 
                     # focal loss
-                    floss = fl_loss_fn(pred_probs, gt)
-                    log_focal[e, i] = floss.item()
+                    # floss = fl_loss_fn(pred_probs, gt)
+                    # log_focal[e, i] = floss.mean().item()
 
 
                     # MAKE SURE TO SPECIFY THE CORRECT LOSS FUNCTION HERE - LOSS, DLOSS, FLOSS
