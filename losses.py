@@ -118,15 +118,13 @@ class BinaryFocalLoss():
         # Get the probability of the true class for each pixel
         # since we're dealing with multiple classes and want to compute the loss only for certain organs, need to use [:, self.idk, ...]
         # self.idk contains the indices of the classes we're interested in, so we can compute the loss only for those classes
-        prob_true = pred_softmax[:, self.idk, ...] * weak_target[:, self.idk, ...] + \
-                    (1 - pred_softmax[:, self.idk, ...]) * (1 - weak_target[:, self.idk, ...])
+        prob_true = pred_softmax[:, self.idk, ...] * weak_target[:, self.idk, ...] + (1 - pred_softmax[:, self.idk, ...]) * (1 - weak_target[:, self.idk, ...])
 
         # Calculate focal weight: (1 - prob_true) ^ gamma
         focal_weight = (1 - prob_true) ** self.gamma
 
         # Apply the alpha balancing factor: α for class 1, (1 - α) for class 0
-        alpha_factor = weak_target[:, self.idk, ...] * self.alpha + \
-                       (1 - weak_target[:, self.idk, ...]) * (1 - self.alpha)
+        alpha_factor = weak_target[:, self.idk, ...] * self.alpha + (1 - weak_target[:, self.idk, ...]) * (1 - self.alpha)
 
         # Now calculate the focal loss = alpha_factor * focal_weight * ce_loss
         focal_loss = alpha_factor * focal_weight * ce_loss
