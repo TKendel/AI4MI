@@ -131,7 +131,7 @@ class BinaryFocalLoss():
 
         # Optionally: apply normalization instead of taking the mean
         # Normalize focal_loss by the sum of the mask or relevant pixels
-        # normalized_loss = focal_loss / (weak_target[:, self.idk, ...].sum() + 1e-10)
-        # return normalized_loss # or normalized_loss.mean()
+        normalized_loss = focal_loss / (weak_target[:, self.idk, ...].sum() + 1e-10)
+        return normalized_loss # or normalized_loss.mean()
 
-        return focal_loss.mean() # reduce loss to a single scalar value
+        # return focal_loss.mean() # reduce loss to a single scalar value
