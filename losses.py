@@ -73,9 +73,15 @@ class DiceLoss():
         target_sum = einsum("bk...->bk", target)
 
         dice_score = (2. * intersection + self.smooth) / (pred_sum + target_sum + self.smooth)
+        # Average Dice score across all batches and classes
+        dice_score = dice_score.mean()
+
+        # Check if the single Dice score is within the valid range [0, 1]
+        if dice_score < 0 or dice_score > 1:
+            raise ValueError(f"Dice score out of range! Dice score: {dice_score} - Terminating training.")
 
         # Dice Loss is 1 - Dice Coefficient
-        loss = 1 - dice_score.mean()
+        loss = 1 - dice_score
 
         return loss
 
