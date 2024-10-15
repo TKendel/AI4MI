@@ -131,7 +131,7 @@ def setup(args) -> tuple[nn.Module, Any, Any, DataLoader, DataLoader, int]:
 
     return (net, optimizer, device, train_loader, val_loader, K)
 
-def normalise(metric, direction):
+#def normalise(metric, direction):
 
 
 def runTraining(args):
