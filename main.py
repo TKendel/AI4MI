@@ -131,10 +131,10 @@ def setup(args) -> tuple[nn.Module, Any, Any, DataLoader, DataLoader, int]:
 
     return (net, optimizer, device, train_loader, val_loader, K)
 
-def normalise(metric, smaller: boolean):
-    for m in metric:
-        if smaller:
-            #add cdf
+# def normalise(metric, smaller: boolean):
+#     for m in metric:
+#         if smaller:
+#             #add cdf
 
 
 def runTraining(args):

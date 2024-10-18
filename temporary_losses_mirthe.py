@@ -10,7 +10,7 @@ class CrossEntropy():
         self.idk = kwargs['idk']
         print(f"Initialized {self.__class__.__name__} with {kwargs}")
 
-    def __call__(self, pred_softmax, weak_target):
+    def __call__(self, pred_softmax, weak_target, focal_loss=False):
         assert pred_softmax.shape == weak_target.shape
         assert simplex(pred_softmax)
         assert sset(weak_target, [0, 1])
@@ -20,6 +20,8 @@ class CrossEntropy():
 
         # Pixel-wise cross-entropy loss (not yet reduced)
         loss = - einsum("bkwh,bkwh->bkwh", mask, log_p)  # Keep the spatial dimensions for focal loss use
+        if not focal_loss:
+            loss /= mask.sum() + 1e-10
 
         return loss  # Return pixel-wise loss, not the reduced sum
 
