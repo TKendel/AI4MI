@@ -64,6 +64,29 @@ for i, line in enumerate(text_lines):
         dpc_line = line.split('DICE PER CLASS')
         dpc = dpc_line[1].strip()
         dpcs.append(dpc)
+    if line.find("CONFUSION - [tp,fp,fn, world_size]")!=-1:  #-1 when missing, reads if Epoch is NOT missing
+        dpc_line = line.split('CONFUSION - [tp,fp,fn, world_size]')
+        dpc = dpc_line[1].strip()
+        dpcs.append(dpc)
+        #Estract individual values******
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 folder = 'logs_out'
@@ -103,10 +126,18 @@ np.save(os.path.join(folder, 'dice.npy'), epochs_np)
 
 
 if 'show' in sys.argv:
-    plt.title("Loss")
-    plt.plot(epochs_np, trs_np, color="red", label='Training loss')
-    plt.plot(epochs_np, vls_np, color="blue", label='Validation loss')
+    plt.title("nnU-Net Loss")
+    plt.plot(epochs_np, trs_np, color="tomato", label='Training loss')
+    plt.plot(epochs_np, vls_np, color="lightskyblue", label='Validation loss')
+    plt.xlabel("Epochs")
+    plt.ylabel("Loss")
     plt.legend()
+    plt.show()
+
+    plt.title("nnU-Net Learning Rate")
+    plt.plot(epochs_np, lrs_np, color="mediumseagreen")
+    plt.xlabel("Epochs")
+    plt.ylabel("Learning rate")
     plt.show()
 
 
