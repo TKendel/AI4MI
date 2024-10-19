@@ -79,6 +79,43 @@ class DiceLoss():
 
         return loss
 
+class GeneralizedDice():
+    def __init__(self, **kwargs):
+        self.idk = kwargs['idk']
+        self.smooth = 1e-10  # Smoothing factor to avoid division by zero
+        print(f"Initialized {self.__class__.__name__} with {kwargs}")
+
+    def __call__(self, pred_softmax, target):
+        assert pred_softmax.shape == target.shape
+        assert simplex(pred_softmax)
+        assert sset(target, [0, 1])
+
+        pred = pred_softmax[:, self.idk, ...].float()
+        target = target[:, self.idk, ...].float()
+
+        weight = 1 / ((einsum("bkwh->bk", target) + 1e-10) ** 2)
+        intersection = weight * einsum("bkwh,bkwh->bk", pred, target)
+        union = weight * (einsum("bkwh->bk", pred) + einsum("bkwh->bk", target))
+
+        divided = 1 - 2 * (einsum("bk->b", intersection) + 1e-10) / (einsum("bk->b", union) + 1e-10)
+
+        loss = divided.mean()
+
+        return loss
+    
+class CombinedLoss:
+    def __init__(self, alpha=0.5, beta=0.5, **kwargs):
+        print(f"Initialized {self.__class__.__name__} with {kwargs}")
+        self.alpha = alpha
+        self.beta = beta
+        self.ce_loss = CrossEntropy(**kwargs)
+        self.dice_loss = DiceLoss(**kwargs)
+
+    def __call__(self, pred_softmax, target):
+        ce = self.ce_loss(pred_softmax, target)
+        dice = self.dice_loss(pred_softmax, target)
+        return self.alpha * ce + self.beta * dice
+
 
 class PartialDiceLoss(DiceLoss):
     def __init__(self, **kwargs):
