@@ -83,9 +83,10 @@ def setup(args) -> tuple[nn.Module, Any, Any, DataLoader, DataLoader, int]:
     lr = 0.0005
     optimizer = torch.optim.Adam(net.parameters(), lr=lr, betas=(0.9, 0.999))
     # optimizer = torch.optim.AdamW(net.parameters(), lr=lr, betas=(0.9, 0.999), weight_decay=0.01)
+    # optimizer = torch.optim.SGD(net.parameters(), lr=lr, weight_decay=0.01)
 
     # Adding a learning rate scheduler
-    #scheduler = lr_scheduler.PolynomialLR(optimizer, total_iters=5, power=1.0)
+    scheduler = lr_scheduler.PolynomialLR(optimizer, total_iters=5, power=1.0)
     #scheduler = lr_scheduler.CosineAnnealingLR(optimizer, T_max=5)
     #scheduler = lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.1, patience=10, verbose=True)
 
@@ -193,7 +194,7 @@ def runTraining(args):
     best_dice: float = 0
     # best_iou: float = 0
     # best_95hd: float = float('inf')  # Hausdorff is minimized, so initialize to infinity
-    # best_3d_dice: float = 0
+    best_3d_dice: float = 0
     
     for e in range(args.epochs):
         for m in ['train', 'val']:
@@ -416,16 +417,16 @@ def runTraining(args):
 
         
 
-        current_dice: float = log_dice_val[e, :, 1:].mean().item()
+        #current_dice: float = log_dice_val[e, :, 1:].mean().item()
         # current_iou: float = log_3d_IOU_val[e, :, 1:].mean().item()
-        # current_3d_dice: float = log_3d_dice_val[e, :, 1:].mean().item()
+        current_3d_dice: float = log_3d_dice_val[e, :, 1:].mean().item()
         # current_95hd: float = log_95hausdorff[e, :, 1:].mean().item()
 
         # Check for improvements
-        if current_dice > best_dice: # and (current_3d_dice > best_3d_dice) and (current_iou > best_iou) and (current_95hd < best_95hd):
+        if (current_3d_dice > best_3d_dice) #and (current_iou > best_iou) and (current_95hd < best_95hd):
             print(f">>> Improved metrics at epoch {e}:")
-            print(f"    Dice: {best_dice:05.3f} -> {current_dice:05.3f} DSC")
-            # print(f"    Dice: {best_3d_dice:05.3f} -> {current_3d_dice:05.3f} DSC")
+            #print(f"    Dice: {best_dice:05.3f} -> {current_dice:05.3f} DSC")
+            print(f"   3D Dice: {best_3d_dice:05.3f} -> {current_3d_dice:05.3f} DSC")
             # print(f"    IoU: {best_iou:05.3f} -> {current_iou:05.3f} IoU")
             # print(f"    Hausdorff: {best_95hd:05.3f} -> {current_95hd:05.3f} HD")
 
