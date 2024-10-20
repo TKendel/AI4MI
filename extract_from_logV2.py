@@ -274,6 +274,12 @@ if 'show' in sys.argv:
     class2 = 'Heart'
     class3 = 'Trachea'
     class4 = 'Aorta'
+
+    color1 = 'seagreen'    #wheat
+    color2 = 'darkslateblue'        #orchid
+    color3 = 'steelblue'      #royalblue, steelblue
+    color4 = 'darkorange'        #aquamarine
+    
     
     plt.title("nnU-Net Loss")
     plt.plot(epochs_np, trs_np, color="tomato", label='Training loss')
@@ -297,10 +303,10 @@ if 'show' in sys.argv:
 
     plt.title("nnU-Net IoU")
     plt.plot(epochs_np, avg_ious, color="crimson", label='Average IoU', marker='.')
-    plt.plot(epochs_np, ious_np[:, 0], color="wheat", label=class1, alpha=0.8)
-    plt.plot(epochs_np, ious_np[:, 1], color="orchid", label=class2, alpha=0.4)
-    plt.plot(epochs_np, ious_np[:, 2], color="royalblue", label=class3, alpha=0.4)
-    plt.plot(epochs_np, ious_np[:, 3], color="aquamarine", label=class4, alpha=0.4)
+    plt.plot(epochs_np, ious_np[:, 0], color=color1, label=class1, alpha=0.7)
+    plt.plot(epochs_np, ious_np[:, 1], color=color2, label=class2, alpha=0.7)
+    plt.plot(epochs_np, ious_np[:, 2], color=color3, label=class3, alpha=0.8)
+    plt.plot(epochs_np, ious_np[:, 3], color=color4, label=class4, alpha=0.7)
     plt.xlabel("Epochs")
     plt.ylabel("IoU")
     plt.legend()
@@ -310,10 +316,10 @@ if 'show' in sys.argv:
 
     plt.title("nnU-Net Dice")
     plt.plot(epochs_np, avg_dices, color="crimson", label='Average Dice', marker='.')
-    plt.plot(epochs_np, dpcs_np[:, 0], color="wheat", label=class1, alpha=0.8)
-    plt.plot(epochs_np, dpcs_np[:, 1], color="orchid", label=class2, alpha=0.4)
-    plt.plot(epochs_np, dpcs_np[:, 2], color="royalblue", label=class3, alpha=0.4)
-    plt.plot(epochs_np, dpcs_np[:, 3], color="aquamarine", label=class4, alpha=0.4)
+    plt.plot(epochs_np, dpcs_np[:, 0], color=color1, label=class1, alpha=0.7)
+    plt.plot(epochs_np, dpcs_np[:, 1], color=color2, label=class2, alpha=0.7)
+    plt.plot(epochs_np, dpcs_np[:, 2], color=color3, label=class3, alpha=0.8)
+    plt.plot(epochs_np, dpcs_np[:, 3], color=color4, label=class4, alpha=0.7)
     plt.xlabel("Epochs")
     plt.ylabel("IoU")
     plt.legend()
