@@ -23,9 +23,9 @@
 # SOFTWARE.
 
 
+from utils import simplex, sset
 from torch import einsum
 
-from utils import simplex, sset
 
 
 class CrossEntropy():
@@ -35,6 +35,9 @@ class CrossEntropy():
         print(f"Initialized {self.__class__.__name__} with {kwargs}")
 
     def __call__(self, pred_softmax, weak_target):
+        """
+            Computes the cross-entropy loss for the given predictions and weak target mask.
+        """
         assert pred_softmax.shape == weak_target.shape
         assert simplex(pred_softmax)
         assert sset(weak_target, [0, 1])
@@ -61,6 +64,9 @@ class DiceLoss():
         print(f"Initialized {self.__class__.__name__} with {kwargs}")
 
     def __call__(self, pred_softmax, target):
+        """
+            Computes the Dice loss for the given predictions and target mask.
+        """
         assert pred_softmax.shape == target.shape
         assert simplex(pred_softmax)
         assert sset(target, [0, 1])
@@ -78,6 +84,11 @@ class DiceLoss():
         loss = 1 - dice_score.mean()
 
         return loss
+    
+class PartialDiceLoss(DiceLoss):
+    def __init__(self, **kwargs):
+        super().__init__(idk=[1], **kwargs)
+
 
 class GeneralizedDice():
     def __init__(self, **kwargs):
@@ -86,6 +97,10 @@ class GeneralizedDice():
         print(f"Initialized {self.__class__.__name__} with {kwargs}")
 
     def __call__(self, pred_softmax, target):
+        """
+            Computes the Generalized Dice loss.
+            Uses class weights inversely proportional to the square of the target mask to calculate the loss.
+        """
         assert pred_softmax.shape == target.shape
         assert simplex(pred_softmax)
         assert sset(target, [0, 1])
@@ -93,16 +108,19 @@ class GeneralizedDice():
         pred = pred_softmax[:, self.idk, ...].float()
         target = target[:, self.idk, ...].float()
 
-        weight = 1 / ((einsum("bkwh->bk", target) + 1e-10) ** 2)
+        # Calculate weight 
+        weight = 1 / ((einsum("bkwh->bk", target) + 1e-10)**2) 
+        # Calculate weighted dice score
         intersection = weight * einsum("bkwh,bkwh->bk", pred, target)
         union = weight * (einsum("bkwh->bk", pred) + einsum("bkwh->bk", target))
 
-        divided = 1 - 2 * (einsum("bk->b", intersection) + 1e-10) / (einsum("bk->b", union) + 1e-10)
+        dice_score = (2 * intersection + 1e-10) / (union + 1e-10)
 
-        loss = divided.mean()
+        loss = 1- dice_score.mean()
 
         return loss
     
+
 class CombinedLoss:
     def __init__(self, alpha=0.5, beta=0.5, **kwargs):
         print(f"Initialized {self.__class__.__name__} with {kwargs}")
@@ -112,14 +130,13 @@ class CombinedLoss:
         self.dice_loss = DiceLoss(**kwargs)
 
     def __call__(self, pred_softmax, target):
+        """
+            Computes a combined loss of CrossEntropy and Dice losses.
+        """
         ce = self.ce_loss(pred_softmax, target)
         dice = self.dice_loss(pred_softmax, target)
         return self.alpha * ce + self.beta * dice
 
-
-class PartialDiceLoss(DiceLoss):
-    def __init__(self, **kwargs):
-        super().__init__(idk=[1], **kwargs)
 
 
 class BinaryFocalLoss():
