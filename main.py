@@ -431,7 +431,7 @@ def runTraining(args):
             # print(f"    Hausdorff: {best_95hd:05.3f} -> {current_95hd:05.3f} HD")
 
             # Update best metrics
-            best_dice = current_dice
+            best_3d_dice = current_3d_dice
             # best_3d_dice = current_3d_dice
             # best_iou = current_iou
             # best_95hd = current_95hd
