@@ -402,7 +402,7 @@ def runTraining(args):
         if (current_dice > best_dice) and (current_3d_dice > best_3d_dice) and (current_iou > best_iou) and (current_95hd < best_95hd):
             print(f">>> Improved metrics at epoch {e}:")
             print(f"    Dice: {best_dice:05.3f} -> {current_dice:05.3f} DSC")
-            print(f"    Dice: {best_3d_dice:05.3f} -> {current_3d_dice:05.3f} DSC")
+            print(f"    3D Dice: {best_3d_dice:05.3f} -> {current_3d_dice:05.3f} DSC")
             print(f"    IoU: {best_iou:05.3f} -> {current_iou:05.3f} IoU")
             print(f"    Hausdorff: {best_95hd:05.3f} -> {current_95hd:05.3f} HD")
 
@@ -429,12 +429,14 @@ def runTraining(args):
             best_epoch = e
 
         #stops if metrics don't improve after 5 epochs above epoch 15
-        patience = 5 #how many epochs it needs to wait to decide to stop
+        # patience = 5 #how many epochs it needs to wait to decide to stop
 
-        if e >= 15:
-            if (e - best_epoch) >= patience:
-                print(f"Stopping early at epoch {e} due to no improvement in {patience} epochs after epoch {best_epoch}")
-                break
+        # if e >= 50:
+        #     if (e - best_epoch) >= patience:
+        #         print(f"Stopping early at epoch {e} due to no improvement in {patience} epochs after epoch {best_epoch}")
+        #         break
+
+        
 
 
 def main():
