@@ -19,23 +19,23 @@ class CrossEntropy():
         mask = weak_target[:, self.idk, ...].float()
 
         # Pixel-wise cross-entropy loss (not yet reduced)
-        loss = - einsum("bkwh,bkwh->bkwh", mask, log_p)  # Keep the spatial dimensions for focal loss use
+        loss = - einsum("bkwh,bkwh->", mask, log_p)  # Keep the spatial dimensions for focal loss use
         if not focal_loss:
             loss /= mask.sum() + 1e-10
 
         return loss  # Return pixel-wise loss, not the reduced sum
 
 class FocalLoss():
-    def _init_(self, alpha=0.25, gamma=2, reduction='mean', **kwargs):
+    def __init__(self, alpha=0.25, gamma=2, reduction='mean', **kwargs):
         self.alpha = alpha 
         self.gamma = gamma
         self.reduction = reduction
         # self.cross_entropy = cross_entropy # Uses the already existing instance of CrossEntropy
         self.ce_loss = CrossEntropy(**kwargs)
 
-        print(f"Initialized {self._class.name_} with alpha={self.alpha}, gamma={self.gamma}")
+        print(f"Initialized {self.__class__.__name__} with {kwargs}")
 
-    def _call_(self, pred_softmax: Tensor, target: Tensor) -> Tensor:
+    def __call__(self, pred_softmax: Tensor, target: Tensor) -> Tensor:
         ce_loss = self.ce_loss(pred_softmax, target, focal_loss=True)
         p_t = torch.exp(-ce_loss) # probability of the true clas (exp(-cross entropy))
 
