@@ -423,7 +423,7 @@ def runTraining(args):
         # current_95hd: float = log_95hausdorff[e, :, 1:].mean().item()
 
         # Check for improvements
-        if (current_3d_dice > best_3d_dice) #and (current_iou > best_iou) and (current_95hd < best_95hd):
+        if (current_3d_dice > best_3d_dice): #and (current_iou > best_iou) and (current_95hd < best_95hd):
             print(f">>> Improved metrics at epoch {e}:")
             #print(f"    Dice: {best_dice:05.3f} -> {current_dice:05.3f} DSC")
             print(f"   3D Dice: {best_3d_dice:05.3f} -> {current_3d_dice:05.3f} DSC")
