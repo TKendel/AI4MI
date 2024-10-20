@@ -1,7 +1,7 @@
 import torch
 from torch import einsum
 from utils import simplex, sset
-
+from torch import Tensor
 
 # This version is specifically for FocalLoss, without the reduction applied.
 class CrossEntropy():
@@ -25,69 +25,30 @@ class CrossEntropy():
 
         return loss  # Return pixel-wise loss, not the reduced sum
 
-
 class FocalLoss():
-    def __init__(self, cross_entropy, gamma=2, alpha=[0.75, 0.25, 0.75, 0.25], **kwargs):
-        """
-        Arguments:
-        - cross_entropy: An instance of CrossEntropy for computing CE loss
-        - gamma: Focusing parameter for the focal loss
-        - alpha: A list of balancing factors for class imbalance, one value per organ
-        """
-        self.cross_entropy = cross_entropy
+    def _init_(self, alpha=0.25, gamma=2, reduction='mean', **kwargs):
+        self.alpha = alpha 
         self.gamma = gamma
-        self.alpha = alpha  # List of alpha values for each organ (e.g., [0.75, 0.25, 0.75, 0.25])
-        self.idk = kwargs['idk']  # Indexes for the organs
-        
-        print(f"Initialized {self.__class__.__name__} with gamma={self.gamma}, alpha={self.alpha}")
-        print(f"IDK (Organ Indexes): {self.idk}")
+        self.reduction = reduction
+        # self.cross_entropy = cross_entropy # Uses the already existing instance of CrossEntropy
+        self.ce_loss = CrossEntropy(**kwargs)
 
-        # Ensure that alpha matches the number of organs in idk
-        assert len(self.alpha) == len(self.idk), f"Length of alpha ({len(self.alpha)}) must match number of organs ({len(self.idk)})."
+        print(f"Initialized {self._class.name_} with alpha={self.alpha}, gamma={self.gamma}")
 
-    def __call__(self, pred_softmax, weak_target):
-        """
-        Arguments:
-        - pred_softmax: The predicted softmax probabilities from the model
-        - weak_target: The ground truth binary target mask, containing binary labels (0 or 1)
-        """
-        assert pred_softmax.shape == weak_target.shape
-        assert simplex(pred_softmax)
-        assert sset(weak_target, [0, 1])
+    def _call_(self, pred_softmax: Tensor, target: Tensor) -> Tensor:
+        ce_loss = self.ce_loss(pred_softmax, target, focal_loss=True)
+        p_t = torch.exp(-ce_loss) # probability of the true clas (exp(-cross entropy))
 
-        # Compute the pixel-wise CE loss (not reduced yet) using CrossEntropyForFocal
-        pixelwise_ce_loss = self.cross_entropy(pred_softmax, weak_target)
+        # focal loss: alpha * (1 - pt)^gamma * CE
+        focal_loss = self.alpha * (1 - p_t) ** self.gamma * ce_loss
 
-        epsilon = 1e-6  # or some small value to avoid log(0) issues
-        focal_loss = 0  # Initialize total focal loss
-
-        # Loop through each organ index and apply the corresponding alpha and focal loss calculation
-        for i, organ_idx in enumerate(self.idk):
-            print(f"Processing organ index: {organ_idx} with alpha: {self.alpha[i]}")  # Debug print
-
-            # Extract the relevant class's prediction and target
-            pred_organ = pred_softmax[:, organ_idx, ...]
-            target_organ = weak_target[:, organ_idx, ...]
-
-            # Compute prob_true: pixel-wise probabilities of correct predictions for this organ
-            prob_true = torch.clamp(pred_organ * target_organ + (1 - pred_organ) * (1 - target_organ),
-                                    min=epsilon, max=1.0 - epsilon)
-
-            # Focal weight: (1 - prob_true) ** gamma
-            focal_weight = (1 - prob_true) ** self.gamma
-
-            # Alpha factor: Use the organ-specific alpha from the list
-            alpha_factor = target_organ * self.alpha[i] + (1 - target_organ) * (1 - self.alpha[i])
-
-            # Pixel-wise focal loss = alpha_factor * focal_weight * pixelwise_ce_loss for this organ
-            organ_focal_loss = alpha_factor * focal_weight * pixelwise_ce_loss[:, organ_idx, ...]
-
-            # Accumulate the loss for each organ
-            focal_loss += organ_focal_loss.mean()
-
-        # Return the average focal loss across all organs
-        return focal_loss / len(self.idk)
-
+        # Apply reduction: mean or sum
+        if self.reduction == 'mean':
+            return focal_loss.mean()
+        elif self.reduction == 'sum':
+            return focal_loss.sum()
+        else:
+            return focal_loss # no reduction (element-wise loss)
 
 
 class DiceLoss():

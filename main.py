@@ -52,7 +52,7 @@ from utils import (Dcm,
                    save_images)
 
 from metrics import volume_dice, volume_iou, distance_based_metrics, cldice # volume_hausdorff, slice_hausdorff, avg_surface_distance
-from losses import CrossEntropy, DiceLoss, BinaryFocalLoss
+from temporary_losses_mirthe import CrossEntropy, DiceLoss, FocalLoss
 
 
 
@@ -149,11 +149,11 @@ def runTraining(args):
     if args.mode == "full":
         loss_fn = CrossEntropy(idk=list(range(K)))  # Supervise both background and foreground
         dloss_fn = DiceLoss(idk=list(range(K)))  # Supervise both background and foreground
-        fl_loss_fn = BinaryFocalLoss(cross_entropy=loss_fn, idk=list(range(K)))
+        fl_loss_fn = FocalLoss(cross_entropy=loss_fn, idk=list(range(K)))
     elif args.mode in ["partial"] and args.dataset in ['SEGTHOR', 'SEGTHOR_STUDENTS']:
         loss_fn = CrossEntropy(idk=[0, 1, 3, 4])  # Do not supervise the heart (class 2)
         dloss_fn = DiceLoss(idk=[0, 1, 3, 4])  # Do not supervise the heart (class 2)
-        fl_loss_fn = BinaryFocalLoss(cross_entropy=loss_fn, idk=[0, 1, 3, 4]) # Do not supervise the heart (class 2)
+        fl_loss_fn = FocalLoss(cross_entropy=loss_fn, idk=[0, 1, 3, 4]) # Do not supervise the heart (class 2)
     else:
         raise ValueError(args.mode, args.dataset)
 
