@@ -41,15 +41,15 @@ class CrossEntropyForFocal():
 
         # Pixel-wise cross-entropy loss (not yet reduced)
         loss = - einsum("bkwh,bkwh->bk", mask, log_p)
-        print(f"Loss before division by sum of mask {loss}")
+        # print(f"Loss before division by sum of mask {loss}")
 
         #if not focal_loss:
         # Normalize by the total number of elements per class
         loss /= mask.sum(dim=(2, 3)) + 1e-10  # sum over w and h dimensions
-        print(f"Loss after division by sum of mask {loss}")
+        # print(f"Loss after division by sum of mask {loss}")
 
         loss_per_class_mean = loss.mean(dim=0)  # Averages over batch dimension
-        print(f"Loss after mean calculated per class {loss_per_class_mean}")
+        # print(f"Loss after mean calculated per class {loss_per_class_mean}")
 
         return loss_per_class_mean  # Shape will be [5], one value per class
     
@@ -68,8 +68,6 @@ class FocalLoss():
         # ce_loss = torch.FloatTensor(ce_loss)
         p_t = torch.exp(-ce_loss) # probability of the true clas (exp(-cross entropy))
 
-        print(p_t)
-        print(p_t.shape)
         # focal loss: alpha * (1 - pt)^gamma * CE
         focal_loss = alpha * (1 - p_t) ** self.gamma * ce_loss
 

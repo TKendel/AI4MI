@@ -292,7 +292,7 @@ def runTraining(args):
 
                     # MAKE SURE TO SPECIFY THE CORRECT LOSS FUNCTION HERE - LOSS, DLOSS, FLOSS
                     if opt:  # Only for training
-                        loss.backward()
+                        floss.backward()
                         opt.step()
 
                     if m == 'val':
