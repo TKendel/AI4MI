@@ -285,7 +285,8 @@ def runTraining(args):
                     log_dloss[e, i] = dloss.item() 
 
                     # focal loss
-                    floss = fl_loss_fn(pred_probs, gt)
+                    alpha_tensor = torch.tensor([0.01, 0.8, 0.2, 0.2, 0.3]).to(device)
+                    floss = fl_loss_fn(pred_probs, gt, alpha=alpha_tensor )
                     log_focal[e, i] = floss.item()
 
 
