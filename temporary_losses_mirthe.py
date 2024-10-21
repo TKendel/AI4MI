@@ -22,8 +22,6 @@ class CrossEntropy():
         loss = - einsum("bkwh,bkwh->", mask, log_p)  # Keep the spatial dimensions for focal loss use
         if not focal_loss:
             loss /= mask.sum() + 1e-10
-        print("here")
-        print(loss.mean(dim=0))
 
         return loss  # Return pixel-wise loss, not the reduced sum
 
@@ -82,7 +80,31 @@ class FocalLoss():
             return focal_loss.sum()
         else:
             return focal_loss # no reduction (element-wise loss)
+        
+class FocalLossOld():
+    def __init__(self, alpha=0.25, gamma=2, reduction='mean', **kwargs):
+        self.alpha = alpha 
+        self.gamma = gamma
+        self.reduction = reduction
+        # self.cross_entropy = cross_entropy # Uses the already existing instance of CrossEntropy
+        self.ce_loss = CrossEntropy(**kwargs)
 
+        # print(f"Initialized {self._class.name_} with alpha={self.alpha}, gamma={self.gamma}")
+
+    def __call__(self, pred_softmax, target):
+        ce_loss = self.ce_loss(pred_softmax, target, focal_loss=True)
+        p_t = torch.exp(-ce_loss) # probability of the true clas (exp(-cross entropy))
+
+        # focal loss: alpha * (1 - pt)^gamma * CE
+        focal_loss = self.alpha * (1 - p_t) ** self.gamma * ce_loss
+
+        # Apply reduction: mean or sum
+        if self.reduction == 'mean':
+            return focal_loss.mean()
+        elif self.reduction == 'sum':
+            return focal_loss.sum()
+        else:
+            return focal_loss # no reduction (element-wise loss)
 
 class DiceLoss():
     def __init__(self, **kwargs):
