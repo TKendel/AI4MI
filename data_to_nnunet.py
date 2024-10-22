@@ -1,10 +1,16 @@
 #Format data for nnunet raw fodler
 
+#This file reads files from the format we utlized in the project and outputs copies
+# in the format expected by nnU-Net.
+# It was not expected that this would be ran multiple times, so no much fexibility 
+# was built into it and requiers editing if the segthor file format changes 
+# (unlikely within our project spawn, but a concer for a longer project)
+
 import os
 import shutil
 
 
-id = 550        
+id = 550        #ID for the dataset folder (destination). Format needed by nnU-Net
 print(f"{id:03}")
 
 patient_list = list(range(1,41)) #there are 40 patients
