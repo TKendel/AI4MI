@@ -27,7 +27,6 @@ def volume_dice(predictions, gts, path_to_slices):
     return dice_scores_per_patient
 
 
-
 def volume_iou(predictions, gts, path_to_slices):
     """
     Compute the Intersection over Union (IoU) between predicted and ground truth volumes for each patient.
@@ -207,8 +206,6 @@ I think this might be too intensive because it takes very long - not used for no
 #         fnr_per_patient[patient_pred] = torch.tensor(patient_fnr, dtype=torch.float32)
 #     return prec_per_patient, rec_per_patient, fpr_per_patient, fnr_per_patient
 
-
-
 """
 - I made the distance based metric implementation more efficient; loop through 
 the segmentations once and calculate all 3 distance based metrics at once --> return 3 dictionaries at the same time. 
@@ -307,9 +304,6 @@ used to be called in main.py like this:
 #         asd_per_patient[patient_pred] = torch.tensor(patient_asd, dtype=torch.float32)
 #     return asd_per_patient
 
-
-
-
 '''
 BECAUSE THE HAUSDORFF ON VOLUME WORKS, WE WILL NO LONGER USE THIS SLIC BASED ONE
 '''
@@ -358,7 +352,6 @@ BECAUSE THE HAUSDORFF ON VOLUME WORKS, WE WILL NO LONGER USE THIS SLIC BASED ONE
 #                 assert sum_pred.item() == pred_points.shape[0], "Mismatch in pred_slice: sum and shape don't match"
 #                 assert sum_gt.item() == gt_points.shape[0], "Mismatch in gt_slice: sum and shape don't match"
             
-
 #                 if pred_points.shape[0] == 0 and gt_points.shape[0] == 0:
 #                     hd = 0 # Both predictions and GT are empty
 #                     zero_count += 1
@@ -385,5 +378,3 @@ BECAUSE THE HAUSDORFF ON VOLUME WORKS, WE WILL NO LONGER USE THIS SLIC BASED ONE
 #         hausdorff_per_patient[patient_pred] = torch.tensor(patient_hd)
 
 #     return hausdorff_per_patient
-
-

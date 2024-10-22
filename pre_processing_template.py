@@ -1,7 +1,7 @@
 import cv2 as cv
 import glob
 import numpy as np
-import os
+
 from preprocessing import Preprocessing
 
 
@@ -19,6 +19,7 @@ try:
 
         pp = Preprocessing(ct_scan, f'data/SEGTHOR_tmp/train/img/{filepath[-19:]}')
 
+        # Add or remove certain methods
         try:
             # pp.bilateralFilter()               # Noise reduction
             pp.equalize()

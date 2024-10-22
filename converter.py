@@ -4,8 +4,11 @@ import nibabel as nib
 from os import walk, remove, rename
 from os.path import join, isfile
 
-path = 'data\segthor_train\\train'
 
+"""
+Converter used for creating compressed nifti files
+"""
+path = 'data\segthor_train\\train'
 # Iterate over files in directory
 for subdir, dirs, files in walk(path):
     for file in files:

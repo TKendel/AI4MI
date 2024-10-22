@@ -29,6 +29,7 @@ heart segmentation with the transformed one from GT.
 
 original_dir = './data/segthor_train/train'
 transformed_dir = './data/transformed_segthor_train/train'
+
 # Create a copy of the segthor_train/train directory
 if not os.path.exists(transformed_dir):
     shutil.copytree(original_dir, transformed_dir)
@@ -86,9 +87,6 @@ def calc_affine_transform(gt_data, gt2_data):
     registration_method.SetInterpolator(sitk.sitkNearestNeighbor)
   
     final_transform = registration_method.Execute(gt2_heart_sitk, gt_heart_sitk)
-    # Apply the final transform to the moving image (GT)
-    # transformed_gt_heart_sitk = sitk.Resample(gt_heart_sitk, gt2_heart_sitk, final_transform, sitk.sitkNearestNeighbor)
-    # visualize_segmentations(gt2_heart_sitk, transformed_gt_heart_sitk)
 
     # Debugging: Print the affine matrix and translation after registration
     print("Affine transformation matrix:\n", final_transform.GetMatrix())
@@ -99,8 +97,6 @@ def calc_affine_transform(gt_data, gt2_data):
     translation = np.array(final_transform.GetTranslation())  # Convert tuple to NumPy array
     
     return affine_matrix, translation
-
-
 
 
 def apply_affine_to_patient(patient_id, affine_matrix, translation_vector):
@@ -142,5 +138,3 @@ print(affine_transform)
 for patient_id in range(1, 41):
     if patient_id == 27: # for debugging i only use patient 27 rather than all the patients
         apply_affine_to_patient(patient_id, affine_transform_matrix, affine_translation)
-
-       

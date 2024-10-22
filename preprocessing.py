@@ -89,6 +89,9 @@ class Preprocessing:
         self.img = clahe.apply(self.img)
 
     def closing(self):
+        '''
+        Apply closing to the image. Good for removing noise but removes data on edges!
+        '''
         kernel = cv.getStructuringElement(cv.MORPH_ELLIPSE,(3,3 ))
         self.img = cv.morphologyEx(self.img, cv.MORPH_CLOSE, kernel)
 
