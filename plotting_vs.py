@@ -1,5 +1,9 @@
 # File to plot and compare the different implementations
 
+#This was a quick comparison between the two models, however, it
+# was never finished as the export from nnunet to npy files 
+# during training continuosly failed
+
 import os
 import numpy as np
 
