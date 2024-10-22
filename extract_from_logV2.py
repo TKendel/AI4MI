@@ -1,12 +1,17 @@
-
-
 #extract training data from logs
 
+# This file extracts data from the nnU-Net logs. Important data is printed out from a modified version
+# of nnU-Net. We understand that this is rudimentary, however, we attempted outputing np files of such 
+# data during training, among other, but encountered a plethora of errors; and after much trying, decided
+# that given the time restriction on this project, this would suffice.
+
+# IMPORTS
 import numpy as np
 import matplotlib.pyplot as plt
 
 import sys, os
 
+#CHECK FOR ARGUMENTS
 #get named arguments divided by '='
 arg_dic = {}
 for arg in sys.argv:
@@ -20,18 +25,17 @@ if '-h' in sys.argv or '-help' in sys.argv:
           '\n', 'To show plotting, pass var "show"',
           '\n', 'To set the log out directory for extraction, use out=directory_name. Default is "logs_out"')
 
+# IF GIVEN, UTILIZE SPECIFIED FILEPATH
 file_path = "logs/log500.txt"
 if 'file' in arg_dic:
     file_path = arg_dic['file']
+print('File path:', file_path)
 
-print(file_path)
-
+#INFO EXTRACTION
 epochs = []
 lrs = []
 trs = []
 vls = []
-#ious = []
-#dpcs = []
 tps = []
 fps = []
 fns = []
@@ -59,21 +63,6 @@ for i, line in enumerate(text_lines):
         val_loss_line = line.split(': val_loss ')
         vl = val_loss_line[1].strip()
         vls.append(vl)
-    """
-    if line.find("IoU")!=-1:  #-1 when missing, reads if Epoch is NOT missing
-        iou_line = line.split('IoU')
-        iou = iou_line[1].strip()
-        ious.append(iou)
-    if line.find("DICE PER CLASS")!=-1:  #-1 when missing, reads if Epoch is NOT missing
-        dpc_line = line.split('DICE PER CLASS')
-        dpc = dpc_line[1].strip()
-        dpcs.append(dpc)
-    if line.find("CONFUSION - [tp,fp,fn, world_size]")!=-1:  #-1 when missing, reads if Epoch is NOT missing
-        dpc_line = line.split('CONFUSION - [tp,fp,fn, world_size]')
-        dpc = dpc_line[1].strip()
-        dpcs.append(dpc)
-        #Estract individual values******
-    """
     if line.find("_tp_ ")!=-1:  #-1 when missing, reads if Epoch is NOT missing
         tpline = line.strip("_tp_ ")
         tpline = tpline.strip("[")
@@ -127,11 +116,9 @@ for i, line in enumerate(text_lines):
 
 
 
-
+#FURTHER CALCULATIONS
 ious = []
-
 #IoU
-#iou = tp
 for i in range(len(tps)):   #for every entry
     #print(type(i))
     #print(len(i))
@@ -150,9 +137,7 @@ for i in range(len(tps)):   #for every entry
         ious[i].append(iou)
     #print('ious', ious[i])
 
-
 dice2 = []
-
 for i in range(len(tps)):   #for every entry
     #print(type(i))
     #print(len(i))
@@ -173,27 +158,17 @@ for i in range(len(tps)):   #for every entry
 
 
 
-
-
-
-
-
-
-
-
-
-
+#CHECK ARG FOR OUTPUT LOCATION
 folder = 'logs_out2'
 if 'out' in arg_dic:
     folder = arg_dic['out']
- 
+print('Output directory:', folder)
+
+
+#SAVE NP FILES, + QUICK REPORT 
 epochs_np = np.array(epochs, dtype='int')
 print('epochs_np length:', len(epochs_np))
 np.save(os.path.join(folder, 'epochs.npy'), epochs_np)
-
-#alt_epochs = np.arange(0,1000, dtype='int')
-#print('alt_epochs length:', len(alt_epochs))
-#np.save('logs_out/epochs.npy', alt_epochs)
 
 lrs_np = np.array(lrs, dtype='float32')
 print('lrs_np length:', len(lrs_np))
@@ -215,10 +190,6 @@ dpcs_np = np.array(dices,dtype='float32')
 print('dpcs_np length:', len(dpcs_np))
 np.save(os.path.join(folder, 'dice.npy'), dpcs_np)
 
-
-
-
-
 avg_ious = np.mean(ious_np, axis=1)
 print('dpcs_np length:', len(avg_ious))
 np.save(os.path.join(folder, 'iou_avg.npy'), avg_ious)
@@ -226,7 +197,6 @@ np.save(os.path.join(folder, 'iou_avg.npy'), avg_ious)
 avg_dices = np.mean(dpcs_np, axis=1)
 print('dpcs_np length:', len(avg_dices))
 np.save(os.path.join(folder, 'dice_avg.npy'), avg_dices)
-
 
 print()
 best_epoch = np.argmax(avg_dices)
@@ -237,39 +207,13 @@ print(dpcs_np[best_epoch])
 print('IoU')
 print(ious_np[best_epoch])
 
+print('Best Epoch singletons')
+print('Avr Dice',avg_dices[best_epoch], 'Training loss',trs_np[best_epoch], 'Validation Loss',vls_np[best_epoch],'Average IoU', avg_ious[best_epoch])
 
 
-
-"""
-access 0 column
-array[:, 0]
-"""
-print('singletons')
-print(avg_dices[best_epoch], trs_np[best_epoch], vls_np[best_epoch], avg_ious[best_epoch])
-
-"""
-for i in range(len(dice2)):
-    print(dice2[i], dpcs_np[i])
-    print()
-"""
-"""
-for i in range(len(dice2)):
-    print(dice2[i][1], dpcs_np[i][1])
-    print()
-print(dice2-dpcs_np)
-"""
-
-
-
+#PLOT THE RESULTS IF THE ARG SHOW IS FOUND
 if 'show' in sys.argv:
-    #nnU-Net say these are the calsses
-    """
-    class1 = 'Aorta'
-    class2 = 'Heart'
-    class3 = 'Trachea'
-    class4 = 'Esophagus'
-    """
-    #but when I open on slicer, it shows this
+    #Classes verified on 3D Slicer
     class1 = 'Esophagus'
     class2 = 'Heart'
     class3 = 'Trachea'
@@ -280,7 +224,7 @@ if 'show' in sys.argv:
     color3 = 'steelblue'      #royalblue, steelblue
     color4 = 'darkorange'        #aquamarine
     
-    
+    #Loss
     plt.title("nnU-Net Loss")
     plt.plot(epochs_np, trs_np, color="tomato", label='Training loss')
     plt.plot(epochs_np, vls_np, color="lightskyblue", label='Validation loss')
@@ -291,7 +235,7 @@ if 'show' in sys.argv:
     plt.grid(alpha=0.3)
     plt.show()
 
-
+    #Learning Rate
     plt.title("nnU-Net Learning Rate")
     plt.plot(epochs_np, lrs_np, color="mediumseagreen")
     plt.xlabel("Epochs")
@@ -300,7 +244,7 @@ if 'show' in sys.argv:
     plt.grid(alpha=0.3)
     plt.show()
     
-
+    #IoU
     plt.title("nnU-Net IoU")
     plt.plot(epochs_np, avg_ious, color="crimson", label='Average IoU', marker='.')
     plt.plot(epochs_np, ious_np[:, 0], color=color1, label=class1, alpha=0.7)
@@ -314,6 +258,7 @@ if 'show' in sys.argv:
     plt.grid(alpha=0.3)
     plt.show()
 
+    #Dice
     plt.title("nnU-Net Dice")
     plt.plot(epochs_np, avg_dices, color="crimson", label='Average Dice', marker='.')
     plt.plot(epochs_np, dpcs_np[:, 0], color=color1, label=class1, alpha=0.7)
@@ -321,28 +266,11 @@ if 'show' in sys.argv:
     plt.plot(epochs_np, dpcs_np[:, 2], color=color3, label=class3, alpha=0.8)
     plt.plot(epochs_np, dpcs_np[:, 3], color=color4, label=class4, alpha=0.7)
     plt.xlabel("Epochs")
-    plt.ylabel("IoU")
+    plt.ylabel("Dice")
     plt.legend()
     plt.ylim([0.0, 1])
     plt.grid(alpha=0.3)
     plt.show()
 
 
-
-
-
-
-
-
-
-"""
-fig = plt.figure()
-ax = fig.gca()
-ax.set_title('my title')
-ax.plot(alt_epochs, trs_np, linewidth=1.5)
-ax.plot(alt_epochs, vls_np, linewidth=1.5)
-#ax.set_ylim([0.01, 0.00])   #https://stackoverflow.com/questions/3777861/how-to-set-the-axis-limits
-#ax.set_ylim([0.0,1]) 
-plt.show()
-"""
 
