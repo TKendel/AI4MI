@@ -22,17 +22,20 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
+import os
 from pathlib import Path
 from functools import partial
 from multiprocessing import Pool
 from contextlib import AbstractContextManager
 from typing import Callable, Iterable, List, Set, Tuple, TypeVar, cast
+from collections import defaultdict
 
 import torch
-import numpy as np
+from torch import Tensor, einsum
 from PIL import Image
 from tqdm import tqdm
-from torch import Tensor, einsum
+import numpy as np
+
 
 tqdm_ = partial(tqdm, dynamic_ncols=True,
                 leave=True,
@@ -107,8 +110,8 @@ def probs2class(probs: Tensor) -> Tensor:
     b, _, *img_shape = probs.shape
     assert simplex(probs)
 
-    res = probs.argmax(dim=1)
-    assert res.shape == (b, *img_shape)
+    res = probs.argmax(dim=1)  # selects the class with the highest probability for each pixel.
+    assert res.shape == (b, *img_shape) #res will be a tensor of class labels for each pixel (B, H, W)
 
     return res
 
@@ -152,8 +155,25 @@ def meta_dice(sum_str: str, label: Tensor, pred: Tensor, smooth: float = 1e-8) -
     return dices
 
 
-dice_coef = partial(meta_dice, "bk...->bk")
-dice_batch = partial(meta_dice, "bk...->k")  # used for 3d dice
+dice_coef = partial(meta_dice, "bk...->bk") # Computes Dice coefficients per image (b dimension) and per class (k dimension).
+dice_batch = partial(meta_dice, "bk...->k")  # Used for 3d dice  -->  will have shape (k,), giving us the Dice coefficient for each class across the entire 3D volume
+
+def meta_iou(sum_str: str, label: Tensor, pred: Tensor, smooth: float = 1e-8) -> Tensor:
+    assert label.shape == pred.shape
+    assert one_hot(label)
+    assert one_hot(pred)
+
+    inter_size: Tensor = einsum(sum_str, [intersection(label, pred)]).type(torch.float32)
+    union_size: Tensor = (einsum(sum_str, [label]) + einsum(sum_str, [pred]) - inter_size).type(torch.float32)
+
+    ious: Tensor = (inter_size + smooth) / (union_size + smooth)
+
+    return ious
+
+
+iou_coef = partial(meta_iou, "bk...->bk") # Computes IoU coefficients per image (b dimension) and per class (k dimension).
+iou_batch = partial(meta_iou, "bk...->k")  # Used for 3d iou
+
 
 
 def intersection(a: Tensor, b: Tensor) -> Tensor:
@@ -176,3 +196,73 @@ def union(a: Tensor, b: Tensor) -> Tensor:
     assert sset(res, [0, 1])
 
     return res
+
+
+
+def count_slices_per_patient(image_dir):
+    """
+    Count the number of slices for each patient based on filenames in a directory.
+    Args:
+    - image_dir (str): Path to the directory containing patient slice images.
+    Returns:
+    - slices_per_patient (dict): Dictionary where keys are patient IDs and values are the number of slices.
+    """
+    slices_per_patient = defaultdict(int)
+
+    for filename in sorted(os.listdir(image_dir)):
+        if filename.lower().endswith(".png"):
+            # Assuming the format is like "Patient_03_000.png"
+            patient_id = '_'.join(filename.split('_')[:2])
+            slices_per_patient[patient_id] += 1
+
+    return slices_per_patient
+
+
+def return_volumes(predictions, gts, path_to_slices):
+    """
+    Organize predictions and ground truth segmentations into volumes per patient based on slice information.
+
+    Parameters:
+    - predictions: Tensor containing all predicted slices for all patients.
+    - gts: Tensor containing all ground truth slices for all patients.
+    - path_to_slices: Path to the slice data that contains slice count information per patient.
+
+    Returns:
+    - prediction_patient_volumes: Dictionary where each key is a patient ID and the value is a tensor of predicted slices for that patient.
+                                  Shape of each tensor: (nr slices, nr classes, 256, 256).
+    - gt_patient_volumes: Dictionary where each key is a patient ID and the value is a tensor of ground truth slices for that patient.
+                          Shape of each tensor: (nr slices, nr classes, 256, 256).
+    """
+    prediction_patient_volumes = {}
+    gt_patient_volumes = {}
+    start = 0
+
+    # Get the number of slices per patient
+    count_slices = count_slices_per_patient(path_to_slices)
+    
+    # Loop over each patient and their corresponding number of slices
+    for patient, num_slices in count_slices.items():
+        # Extract the predicted and ground truth slices for this patient
+        predictions_patient_slices = predictions[start:start + num_slices]
+        gt_patient_slices = gts[start:start + num_slices]
+
+        # Store the slices in the dictionaries
+        prediction_patient_volumes[patient] = predictions_patient_slices
+        gt_patient_volumes[patient] = gt_patient_slices
+
+        # {
+        # "Patient_01": tensor of shape (nr slices, nr classes, 256, 256),
+        # "Patient_02": tensor of shape (nr slices, nr classes, 256, 256),
+        # "Patient_03": tensor of shape (nr slices, nr classes, 256, 256),
+        # }
+        
+        # Update the start index for the next patient
+        start += num_slices
+    
+    return prediction_patient_volumes, gt_patient_volumes
+
+
+
+
+  
+
