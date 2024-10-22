@@ -68,7 +68,6 @@ np <- import("numpy")
 
 
 
-#*******implement list of best epochs ********
 length_warning = list()
 
 #for i in lenth best epochs (one per folder)
@@ -133,12 +132,31 @@ for(p in 1:length(preprocessing)){
       #rs[filename][[i,1]]=test$p.value
       
     }
+    #Because of formatting of the data, this needs to be hard coded
+    if(length(p_values)==5){
+      #No background case
+      p_values=append(p_values, "Null", after = 1)
+      p_lavene=append(p_lavene, "Null", after = 1)
+      p_ks=append(p_ks, "Null", after = 1)
+    }
+    if(length(p_values)==3){
+      #No background case
+      p_values=append(p_values, "Null", after = 1)
+      p_lavene=append(p_lavene, "Null", after = 1)
+      p_ks=append(p_ks, "Null", after = 1)
+      for (r in 1:2){
+        p_values=append(p_values, "Null", after = 3)
+        p_lavene=append(p_lavene, "Null", after = 3)
+        p_ks=append(p_ks, "Null", after = 3)
+      }
+    }
     if (length(p_values)<6){
       difference = 6-length(p_values)
       fill_in = rep('NULL', difference)
       p_values = c(p_values, fill_in)
       p_lavene = c(p_lavene, fill_in)
       p_ks = c(p_ks, fill_in)
+
     }
     
     
@@ -158,13 +176,15 @@ for(p in 1:length(preprocessing)){
     #rs[filename]=unlist(p_)
     #temp = data.frame(p_)
   }
-  
+  colum_names = c('Metric', 'Background', 'Esophagus', 'Heart', 'Trachea','Aorta')
   results_t <- plyr::adply(results_t,1,unlist,.id = NULL)
-  results_lavene <- plyr::adply(results_t,1,unlist,.id = NULL)
-  results_ks <- plyr::adply(results_t,1,unlist,.id = NULL)
+  colnames(results_t) = colum_names
+  results_lavene <- plyr::adply(results_lavene,1,unlist,.id = NULL)
+  colnames(results_lavene) = colum_names
+  results_ks <- plyr::adply(results_ks,1,unlist,.id = NULL)
+  colnames(results_ks) = colum_names
   #https://stackoverflow.com/questions/47876074/how-to-write-a-list-of-lists-into-a-single-csv-file-in-r
-  
-  
+
   #print(results_t)
   filepath = paste("p_values/", preprocessing[p],'.t_test.csv', sep="")
   #print(length(results_t))
@@ -232,55 +252,55 @@ print(length(length_warning))
 
 
 
-
-
-
-
-
-
-test = np$load('FINALBASELINE/3ddice_val.npy')
-dim(test)
-
-test = np$load('FINALBASELINE/dice_val.npy')
-dim(test)
-
-
-
-
-
-
-
-df = data.frame(dice3d=results[1],dice=results[2])
-print(df)
-
-dd  <-  as.data.frame(matrix(unlist(results), nrow=length(unlist(results[1]))))
-dim(dd)
-print(dd)
-
-df = data.frame(results)
-df
-dim(df)
-
-
-
-
-#write_csv(results, filepath)
-#saveRDS(results, file=filepath )
-#list.save(results, filepath)
-
-
-print(unlist(results))
-df = data.frame(results)
-print(df)
-dim(df)
-
-example = data.frame(title=c(1,2,3,4), beta=c(5,6,7,8))
-print(example)
-example['title'][[2,1]]#access value 
-
-for (i in 1:shape[2]){
-  print(i)
-  
-  
-}
+# 
+# 
+# 
+# 
+# 
+# 
+# test = np$load('FINALBASELINE/3ddice_val.npy')
+# dim(test)
+# 
+# test = np$load('FINALBASELINE/dice_val.npy')
+# dim(test)
+# 
+# 
+# 
+# 
+# 
+# 
+# 
+# df = data.frame(dice3d=results[1],dice=results[2])
+# print(df)
+# 
+# dd  <-  as.data.frame(matrix(unlist(results), nrow=length(unlist(results[1]))))
+# dim(dd)
+# print(dd)
+# 
+# df = data.frame(results)
+# df
+# dim(df)
+# 
+# 
+# 
+# 
+# #write_csv(results, filepath)
+# #saveRDS(results, file=filepath )
+# #list.save(results, filepath)
+# 
+# 
+# print(unlist(results))
+# df = data.frame(results)
+# print(df)
+# dim(df)
+# 
+# example = data.frame(title=c(1,2,3,4), beta=c(5,6,7,8))
+# print(example)
+# example['title'][[2,1]]#access value 
+# 
+# for (i in 1:shape[2]){
+#   print(i)
+#   
+#   
+# }
 
