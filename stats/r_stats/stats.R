@@ -133,10 +133,12 @@ for(p in 1:length(preprocessing)){
       #rs[filename][[i,1]]=test$p.value
       
     }
-    if (length(p_values)<10){
-      p_values = c(p_values, rep('NULL', (5-length(p_values))))
-      p_lavene = c(p_lavene, rep('NULL', (5-length(p_values))))
-      p_ks = c(p_ks, rep('NULL', (5-length(p_values))))
+    if (length(p_values)<6){
+      difference = 6-length(p_values)
+      fill_in = rep('NULL', difference)
+      p_values = c(p_values, fill_in)
+      p_lavene = c(p_lavene, fill_in)
+      p_ks = c(p_ks, fill_in)
     }
     
     
@@ -157,16 +159,22 @@ for(p in 1:length(preprocessing)){
     #temp = data.frame(p_)
   }
   
+  results_t <- plyr::adply(results_t,1,unlist,.id = NULL)
+  results_lavene <- plyr::adply(results_t,1,unlist,.id = NULL)
+  results_ks <- plyr::adply(results_t,1,unlist,.id = NULL)
+  #https://stackoverflow.com/questions/47876074/how-to-write-a-list-of-lists-into-a-single-csv-file-in-r
+  
+  
   #print(results_t)
   filepath = paste("p_values/", preprocessing[p],'.t_test.csv', sep="")
   #print(length(results_t))
-  capture.output(unlist(results_t), file=filepath)
+  capture.output(results_t, file=filepath)
   
   filepath = paste("p_values/", preprocessing[p],'.levene.csv', sep="")
-  capture.output(unlist(results_lavene), file=filepath)
+  capture.output(results_lavene, file=filepath)
   
   filepath = paste("p_values/", preprocessing[p],'.kolmogorov.csv', sep="")
-  capture.output(unlist(results_ks), file=filepath)
+  capture.output(results_ks, file=filepath)
   
   print(paste('Done with', preprocessing))
   
@@ -174,9 +182,11 @@ for(p in 1:length(preprocessing)){
   
   
   
-  # 
+
   # print(results_t)
   # new_list <- plyr::adply(results_t,1,unlist,.id = NULL)
+  # new_list
+  # #https://stackoverflow.com/questions/47876074/how-to-write-a-list-of-lists-into-a-single-csv-file-in-r
   # 
   # > new_list
   # 
