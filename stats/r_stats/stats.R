@@ -191,15 +191,15 @@ for(p in 1:length(preprocessing)){
   #print(results_t)
   filepath = paste("p_values/", preprocessing[p],'.t_test.csv', sep="")
   #capture.output(results_t, file=filepath)
-  write.csv(results_t,filepath)
+  write.csv(results_t,filepath, quote=FALSE)
   
   filepath = paste("p_values/", preprocessing[p],'.levene.csv', sep="")
   #capture.output(results_lavene, file=filepath)
-  write.csv(results_lavene,filepath)
+  write.csv(results_lavene,filepath, quote=FALSE)
   
   filepath = paste("p_values/", preprocessing[p],'.kolmogorov.csv', sep="")
   #capture.output(results_ks, file=filepath)
-  write.csv(results_ks,filepath) #*****
+  write.csv(results_ks,filepath, quote=FALSE) #*****
   
   print(paste('Done with', preprocessing))
   
