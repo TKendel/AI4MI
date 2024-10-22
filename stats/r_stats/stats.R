@@ -100,7 +100,7 @@ for(p in 1:length(preprocessing)){
     #print(unlist(filename))
     #Remove from string
     #https://sparkbyexamples.com/r-programming/remove-character-from-string-in-r/
-    flename = list(gsub('[_val.npy]','',unlist(filename)))
+    filename = list(gsub('[_val.npy]','',unlist(filename)))
     p_values = list(filename)
     p_lavene = list(filename)
     p_ks = list(filename)
@@ -190,14 +190,16 @@ for(p in 1:length(preprocessing)){
 
   #print(results_t)
   filepath = paste("p_values/", preprocessing[p],'.t_test.csv', sep="")
-  #print(length(results_t))
-  capture.output(results_t, file=filepath)
+  #capture.output(results_t, file=filepath)
+  write.csv(results_t,filepath)
   
   filepath = paste("p_values/", preprocessing[p],'.levene.csv', sep="")
-  capture.output(results_lavene, file=filepath)
+  #capture.output(results_lavene, file=filepath)
+  write.csv(results_lavene,filepath)
   
   filepath = paste("p_values/", preprocessing[p],'.kolmogorov.csv', sep="")
-  capture.output(results_ks, file=filepath)
+  #capture.output(results_ks, file=filepath)
+  write.csv(results_ks,filepath) #*****
   
   print(paste('Done with', preprocessing))
   
