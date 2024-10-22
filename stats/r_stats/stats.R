@@ -125,9 +125,9 @@ for(p in 1:length(preprocessing)){
       #levene[1,3]#p value
 
       #print(test$p.value)
-      p_values = c(p_values, test$p.value)
-      p_lavene = c(p_lavene, levene[1,3])
-      p_ks = c(p_ks, ks_test$p.value)
+      p_values = c(p_values, signif(test$p.value, digits = 4))
+      p_lavene = c(p_lavene,  signif(levene[1,3], digits = 4))
+      p_ks = c(p_ks, signif(ks_test$p.value, digits = 4) )
       #p_ = c(p_, test$p.value)
       #rs[filename][[i,1]]=test$p.value
       
