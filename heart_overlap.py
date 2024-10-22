@@ -1,6 +1,11 @@
-#Afffine transform on segmentations
+#This file loads three (3) GT of patient 27, the initial correct gt, the gt with the shifted heart out of place
+# and that calculated with the given transformation matrix. The shifted heart is positioned through our methods
+# and the overlap is calculated
 
-#import cv2
+# This script is not meant to be run mulstiple times, and was only used to better understand the behaviour of
+# our implementation
+
+#IMPORTS
 import numpy as np
 import nibabel as nib
 import os
@@ -15,7 +20,7 @@ import warnings
 warnings.filterwarnings("ignore", category=DeprecationWarning) 
 
 
-
+# READ CORRECT GT AND SHIFTED GT
 # Reads and saves the same nii file
 reference = nib.load('data/OLD DATA/segthor_train_og/train/Patient_27/GT2.nii.gz')  #loaad reference (correct) .nii.gz
 ref_np = np.array(reference.dataobj)    # to np arraay
@@ -28,7 +33,7 @@ broken_heart = np.where(broken_np == 2, broken_np, 0) # HEART - MASK 2
 
 
 
-
+# ALLIGN SHIFTED HEART
 #First rotate, as it is done at the center of the volume, not heart
 broken_heart = rotate(broken_heart, angle=-26, reshape=False)   #Rotate matrix #reshape=False makes sure not to expand matrix (crop when rotating)
 #https://stackoverflow.com/questions/53171057/numpy-matrix-rotation-for-any-degrees
@@ -49,12 +54,14 @@ broken_heart = np.roll(broken_heart, round(y), axis=1)
 broken_heart = np.roll(broken_heart, round(z), axis=2)
 
 
+#LOAD HEART WITH SOLUTION MATRIX TRANSFORMATION
 # Solution - given transformation
 solution = nib.load('data/OLD DATA/segthor_train_og/train/Patient_27/GT2.nii.gz')  #loaad reference (correct) .nii.gz
 sol_np = np.array(solution.dataobj)    # to np arraay
 heart_sol = np.where(sol_np == 2, sol_np, 0) #np.where(conndition, if yes, if not) # HEART - MASK 2
 
 
+#CALCULATE TP, TN, FP, FN OF TWO VOLUMES - VOLUME: 0 BACKGROUND, ELSE TRUTH
 def mesure_overlap(gt, prediction):
         if gt.shape != prediction.shape:
                 print('ERROR: the dimention of the volumes do not match')
@@ -75,6 +82,7 @@ def mesure_overlap(gt, prediction):
 
         return tp, tn, fp, fn
 
+#REPORT OVERLAP OF HEARTS
 tp, tn, fp, fn = mesure_overlap(heart_ref, broken_heart)
 print('\n')
 print('Reference vs Broken')
