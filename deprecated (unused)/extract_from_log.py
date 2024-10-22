@@ -1,6 +1,7 @@
-
-
 #extract training data from logs
+
+# This file extracts data from the nnU-Net logs (unedited nnU-Net). This was replaced with extract_from_logsV2.py
+# please refer to that file for further explanation
 
 import numpy as np
 import matplotlib.pyplot as plt
