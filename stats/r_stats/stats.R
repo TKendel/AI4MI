@@ -98,9 +98,12 @@ for(p in 1:length(preprocessing)){
     
     shape = dim(BER_matrix)
     #print(unlist(filename))
-    p_values = list(unlist(filename))
-    p_lavene = list(unlist(filename))
-    p_ks = list(unlist(filename))
+    #Remove from string
+    #https://sparkbyexamples.com/r-programming/remove-character-from-string-in-r/
+    flename = list(gsub('[_val.npy]','',unlist(filename)))
+    p_values = list(filename)
+    p_lavene = list(filename)
+    p_ks = list(filename)
     #p_ = list()
     if(length( base_matrix[,1])>10){
       length_warning[[length(length_warning)+1]] <- paste('Warning', filename, 'of length', length(base_class))
