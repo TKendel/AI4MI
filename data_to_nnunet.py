@@ -13,6 +13,9 @@ import shutil
 id = 550        #ID for the dataset folder (destination). Format needed by nnU-Net
 print(f"{id:03}")
 
+"""
+Format data for nnunet raw fodler
+"""
 patient_list = list(range(1,41)) #there are 40 patients
 
 for patient in patient_list:

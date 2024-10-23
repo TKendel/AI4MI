@@ -142,7 +142,13 @@ options:
   --dest METRIC_MODE.png
                         Optional: save the plot to a .png file
   --headless            Does not display the plot and save it directly (implies --dest to be provided.
-$ python plot.py --metric_file results/segthor/ce/dice_val.npy --dest results/segthor/ce/dice_val.png
+
+
+###IT USED TO BE: 
+###$ python plot.py --metric_file results/segthor/ce/dice_val.npy --dest results/segthor/ce/dice_val.png
+###NOW YOU MUST SPECIFY THE MODEL 
+
+$ python plot.py --metric_file results/segthor/ce/loss_val.npy --dest results/segthor/ce/loss_val.png --model ENet
 ```
 ![Validation DSC](dice_val.png)
 

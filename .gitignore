@@ -34,3 +34,6 @@ stats/r_stats/paperplots/*
 stats/r_stats/p_values/*
 nnunetv2/*
 nnunetv1/*
+.job
+.out
+paperplots/
