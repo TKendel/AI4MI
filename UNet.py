@@ -56,6 +56,7 @@ class UNet3D(nn.Module):
         # Initialize weights
         self.init_weights()
 
+
     def forward(self, x):
         # Encoder
         xe11 = relu(self.e11(x))
@@ -87,7 +88,6 @@ class UNet3D(nn.Module):
         if xu1.shape[2] != xe42.shape[2]:  # Check if depth doesn't match
             xe42 = F.pad(xe42, (0, 0, 0, 0, 0, xu1.shape[2] - xe42.shape[2]))  # Pad depth dimension
     
-
         xu11 = torch.cat([xu1, xe42], dim=1)  # Concatenate skip connection from encoder
         print(f"Shape of concatenated tensor xu11: {xu11.shape}")  # Should be [batch_size, 1024, depth, height, width]
 
@@ -120,6 +120,7 @@ class UNet3D(nn.Module):
             out = torch.softmax(out, dim=1)  # Multi-class segmentation
 
         return out
+
 
     def init_weights(self):
         for m in self.modules():

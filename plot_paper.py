@@ -1,10 +1,12 @@
 import matplotlib.pyplot as plt
-import warnings
-warnings.filterwarnings("ignore", category=FutureWarning)
 import seaborn as sns
 import pandas as pd
 import numpy as np
 import os 
+
+import warnings
+warnings.filterwarnings("ignore", category=FutureWarning)
+
 
 def create_distr_plot(data, organ_names, yliml, ylimu, plot, title, ylabel, colormap, skip_first=False, save_path=None):
     '''
@@ -68,9 +70,9 @@ def create_lineplot(data, organ_names, yliml, ylimu, title, ylabel, colormap, sk
 
 
 def create_comparison_violin_plot(data1, data2, organ_names, yliml, ylimu, title, ylabel, skip_first=False, save_path=None):
-    """
+    '''
     Creates a comparison violin plot for two datasets (e.g., CE loss vs Dice loss) across the specified organ classes.
-    """
+    '''
     dice_scores1 = data1.reshape(-1, data1.shape[2])
     dice_scores2 = data2.reshape(-1, data2.shape[2])
 
@@ -112,7 +114,7 @@ def generate_plots(metric_list, organ_names, yliml, ylimu, title_map, ylabel_map
         path = os.path.join(basedir, metric + '_val.npy')  # Correct path construction
         data = np.load(path) 
 
-        # violin plot & boxplots
+        # Violin plot & boxplots
         save_boxplot = os.path.join(paperplots_dir, f"{metric}_boxplot.png")
         save_violin = os.path.join(paperplots_dir, f"{metric}_violinplot.png")
         save_swarm = os.path.join(paperplots_dir, f"{metric}_swarmplot.png")
@@ -125,6 +127,7 @@ def generate_plots(metric_list, organ_names, yliml, ylimu, title_map, ylabel_map
         save_lineplot = os.path.join(paperplots_dir, f"{metric}_lineplot_m.png")
         create_lineplot(data, organ_names, yliml, ylimu, title=title_map[metric], ylabel=ylabel_map[metric], colormap=colormap, skip_first=skip_first, save_path=save_lineplot)
         break
+
 
 def generate_comparison_plots(metric_list, organ_names, yliml, ylimu, title_map, ylabel_map, basedir, basedir2, paperplots_dir, colormap, skip_first=False):
     ''''
@@ -142,9 +145,6 @@ def generate_comparison_plots(metric_list, organ_names, yliml, ylimu, title_map,
         create_comparison_violin_plot(data1, data2, organ_names, yliml, ylimu, title=title_map[metric], ylabel=ylabel_map[metric],skip_first=skip_first, save_path=save_comparison_violin)
 
 
-
-
-
 ################### DATA ###################
 basedir = './results/segthor/BASELINE'
 basedir2 = './results/segthor/DICELOSS_1510'
@@ -159,9 +159,8 @@ overlap_metrics = ['3ddice', '3dIOU']
 titlemap_overlap = {'3ddice': 'Volumetric Dice - Validation 25 Epochs', '3dIOU': 'Volumetric IoU - Validation 25 Epochs'}
 ylabelmap_overlap = {'3ddice': 'Dice', '3dIOU': 'IoU'}
 generate_plots(overlap_metrics, organ_names, 0, 1, titlemap_overlap, ylabelmap_overlap, basedir, paperplots_dir, color_map, skip_first=True)
-# if you want to have the split violin compare two models;
+# If you want to have the split violin compare two models;
 generate_comparison_plots(overlap_metrics, organ_names, 0, 1, titlemap_overlap, ylabelmap_overlap, basedir, basedir2, paperplots_dir, color_map, skip_first=True)
-
 
 ########## Distance based plots ##########
 organ_names_d = ['Esophagus', 'Heart', 'Trachea', 'Aorta']
@@ -171,7 +170,6 @@ ylabelmap_distance = {'HD': 'HD', '95HD': '95HD', 'ASD': 'ASD'}
 generate_plots(distance_metrics, organ_names_d, 0, 500, titlemap_distance, ylabelmap_distance, basedir, paperplots_dir, color_map)
 generate_comparison_plots(distance_metrics, organ_names_d, 0, 500, titlemap_distance, ylabelmap_distance, basedir, basedir2, paperplots_dir, color_map)
 
-
 ########## Centerline Dice plots ##########
 organ_names_cl = ['Esophagus', 'Aorta']
 cldice_metrics = ['cldice']
@@ -179,23 +177,3 @@ titlemap_cldice = {'cldice': 'Centerline Dice - Validation 25 Epochs'}
 ylabelmap_cldice = {'cldice': 'clDice'}
 generate_plots(cldice_metrics, organ_names_cl, 0, 1, titlemap_cldice, ylabelmap_cldice, basedir, paperplots_dir, color_map)
 generate_comparison_plots(cldice_metrics, organ_names_cl, 0, 1, titlemap_cldice, ylabelmap_cldice, basedir, basedir2, paperplots_dir, color_map)
-
-
-
-
-
-# Statistics of given file
-# datastring = './results/segthor/BASELINE/3ddice_val.npy'
-# data = np.load(datastring)
-# dice_scores = data.reshape(-1, data.shape[2])  # Reshape to have all  scores per class
-# df = pd.DataFrame(dice_scores, columns=organ_names)
-# min_values = df.min()
-# max_values = df.max()
-# mean_values = df.mean()
-# median_values = df.median()
-# std_values = df.std()
-
-# stats = pd.DataFrame({'Min': min_values, 'Max': max_values, 'Mean':mean_values, 'Median': median_values, 'std':std_values})
-# print("STATISTICS: ", datastring)
-# print(stats)
-

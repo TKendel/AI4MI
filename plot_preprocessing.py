@@ -7,6 +7,12 @@ import cv2
 def get_image_paths(folder):
     return [os.path.join(folder, f) for f in os.listdir(folder) if f.endswith('.png')]
 
+
+def get_image_paths0000(folder):
+    # Filter only files ending with '000.png'
+    return [os.path.join(folder, f) for f in os.listdir(folder) if f.endswith('000.png')]
+
+
 original_folder = 'data/SEGTHOR/train/img'
 transformed_folder = 'data/SEGTHOR_tmp/train/img'
 original_paths = get_image_paths(original_folder)
@@ -33,12 +39,6 @@ for i, idx in enumerate(random_indices):
 
 plt.tight_layout()
 plt.show()
-
-
-
-def get_image_paths0000(folder):
-    # Filter only files ending with '000.png'
-    return [os.path.join(folder, f) for f in os.listdir(folder) if f.endswith('000.png')]
 
 original_folder = 'data/SEGTHOR/train/img'
 transformed_folder = 'data/SEGTHOR_tmp/train/img'

@@ -1,7 +1,3 @@
-
-
-
-
 # #!/usr/bin/env python3
 
 # MIT License
@@ -56,7 +52,7 @@ from utils import (Dcm,
                    save_images)
 
 from metrics import volume_dice, volume_iou, distance_based_metrics, cldice # volume_hausdorff, slice_hausdorff, avg_surface_distance
-from losses import CrossEntropy, DiceLoss, BinaryFocalLoss, GeneralizedDice, CombinedLoss
+from losses import CrossEntropy, DiceLoss, GeneralizedDice, CombinedLoss
 
 
 

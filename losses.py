@@ -27,6 +27,7 @@ from utils import simplex, sset
 from torch import einsum
 from torch import Tensor
 
+
 class CrossEntropy():
     def __init__(self, **kwargs):
         # Self.idk is used to filter out some classes of the target mask. Use fancy indexing
@@ -46,9 +47,11 @@ class CrossEntropy():
         loss /= mask.sum() + 1e-10
         return loss  # Return pixel-wise loss, not the reduced sum
 
+
 class PartialCrossEntropy(CrossEntropy):
     def __init__(self, **kwargs):
         super().__init__(idk=[1], **kwargs)
+
 
 class DiceLoss():
     def __init__(self, **kwargs):
@@ -85,6 +88,7 @@ class DiceLoss():
 
         return loss
     
+
 class PartialDiceLoss(DiceLoss):
     def __init__(self, **kwargs):
         super().__init__(idk=[1], **kwargs)
@@ -113,6 +117,7 @@ class CrossEntropyPerClass():
         #mask_sum_per_class = mask.sum(dim=(0, 2, 3)) + 1e-10  # sum over batch (0), height (2), and width (3)  
         #loss /= mask_sum_per_class
         return loss  # Shape will be [num_classes], one value per class
+
 
 class FocalLoss():
     """
@@ -146,7 +151,6 @@ class FocalLoss():
             return focal_loss.sum()   # Sum reduction to scalar
         else:
             return focal_loss         # No reduction (per-pixel loss returned)
-
 
 
 class GeneralizedDice():
@@ -195,5 +199,3 @@ class CombinedLoss:
         ce = self.ce_loss(pred_softmax, target)
         dice = self.dice_loss(pred_softmax, target)
         return self.alpha * ce + self.beta * dice
-
-

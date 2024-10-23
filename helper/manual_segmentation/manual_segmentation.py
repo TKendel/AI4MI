@@ -2,11 +2,12 @@ import cv2 as cv
 import numpy as np
 import matplotlib.pyplot as plt
 
+'''
+**Deprecated**
 
-"""
-Used for manual segmentation of the heart.
-Discontinued
-"""
+Used for manual segmentation of the heart. Works alright for current patient but we end up into problems when trying to extrapolate it over rest of patients.
+'''
+
 for i in range(20, 202):
     iterator = 0
     if i < 10:
@@ -18,10 +19,10 @@ for i in range(20, 202):
         
     original_image = cv.imread(f'data\SEGTHOR\\train\img\Patient_10_0{iterator}.png')
 
-    # convert the image to grayscale
+    # Convert the image to grayscale
     gray = cv.cvtColor(original_image, cv.COLOR_BGR2GRAY)
 
-    #TODO Instead crop using a dialated heart mask for better focus
+    #TODO Instead crop using a dialated heart mask for better focus maybe
     # Crop the image.
     crop = gray[66:194]
 
@@ -36,9 +37,6 @@ for i in range(20, 202):
     
     # Extract edges using Canny
     edges = cv.Canny(erosion,100,200)
-
-    # cv.imshow('first edges', edges)
-    # cv.waitKey(0)
 
     # Find big edges and sort sort them starting from the biggest
     contours, _ = cv.findContours(edges, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE)
@@ -64,9 +62,7 @@ for i in range(20, 202):
     edges = cv.Canny(dilate,100,200)
     contours, _ = cv.findContours(edges, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE)
 
-    
     cnt = sorted(contours, key=cv.contourArea, reverse=True)[0:3]
-    # cv.drawContours(crop, cnt, -1, (0, 255, 255), 2)
     if cnt != None:
         spine_found = False	
         for contour in cnt:
@@ -75,7 +71,6 @@ for i in range(20, 202):
                 cv.rectangle(crop, (x, y), (x + w, y + h), (0, 255, 0), 2)
     else:
         print('No contours found! ')
-
 
     titles = ['Threshold', 'Erosion', 'Edges', 'Final result']
     images = [threshold, erosion, edges, crop]

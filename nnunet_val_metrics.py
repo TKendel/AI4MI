@@ -1,33 +1,26 @@
-# Validation metrics
-
-# This file references to the metrics.py file to estimate all values for the nnU-Net predictions on
-# the validation set. Many of these metrics are not used calculated, let along utilized, during the
-# training of the nnU-Net, but are calculated here to gain a better understanding of how the 
-# different models compare
-
-#IMPORTS
-import torch 
 import numpy as np
-from utils import count_slices_per_patient, return_volumes, dice_batch, iou_batch
-from scipy.spatial.distance import directed_hausdorff
 import seg_metrics.seg_metrics as sg
+import nibabel as nib
+import tabulate
+
 from skimage.morphology import skeletonize
 
-import nibabel as nib
-import os
-from sklearn.metrics import confusion_matrix
-
-import tabulate
 import warnings
 warnings.filterwarnings("ignore", category=DeprecationWarning) 
 
 
+'''
+Validation metrics
 
-
-
+This file references to the metrics.py file to estimate all values for the nnU-Net predictions on
+the validation set. Many of these metrics are not used calculated, let along utilized, during the
+training of the nnU-Net, but are calculated here to gain a better understanding of how the 
+different models compare
+'''
 #METRICS
 def cl_score(v, s):
     return np.sum(v * s) / np.sum(s)
+
 
 def cldice2(predictions, gts):
     prediction_patient_volumes = predictions
@@ -65,6 +58,7 @@ def cldice2(predictions, gts):
 
     return cldice_patient #cldice_per_patient
 
+
 def DICE(predicted, gt):
     #cm = confusion_matrix(gt, predicted) # sklearn.metrics.confusion_matrix(y_true, y_pred, *, labels=None, sample_weight=None, normalize=None)
     tp_ = np.where(predicted == gt, 1, 0)
@@ -82,6 +76,7 @@ def DICE(predicted, gt):
 
     return dice
 
+
 def volume_dice(predictions, gts):
     prediction_patient_volumes = predictions
     gt_patient_volumes = gts
@@ -94,8 +89,8 @@ def volume_dice(predictions, gts):
         dice_per_class.append(dicescores)
     return dice_per_class
 
-def distance_metric(gts, preds):
 
+def distance_metric(gts, preds):
     gt_list = gts
     pred_list = preds
     H, W, slices= predicted_np.shape
@@ -133,6 +128,7 @@ def distance_metric(gts, preds):
         patient_95hd.append(_95hausdorff_distance_class)
     return(patient_hd, patient_95hd, patient_asd)
 
+
 def idv_iou(gt, predicted):
     comb = gt - (predicted*5)   # 0 is no, 1 or 5 is yes
     # if both are 0 -- 0-0 = 0 TN
@@ -147,6 +143,7 @@ def idv_iou(gt, predicted):
     iou = (np.sum(tp))/((np.sum(tp))+np.sum(fp)+np.sum(fn))
     return iou
 
+
 def IoU(gts, preds):
     iou_per_class = []
 
@@ -157,31 +154,26 @@ def IoU(gts, preds):
     return iou_per_class #dice_scores_per_patient
 
 
-
-
-
-
-
-#CALCULATE ALL METRICS
+# ++CALCULATE ALL METRICS++
 def calculate(gt_np, predicted_np):
 
-    #per class
+    # Per class
     gt1 = np.where(gt_np == 1, gt_np, 0)
     gt2 = np.where(gt_np == 2, gt_np, 0)
     gt3 = np.where(gt_np == 3, gt_np, 0)
     gt4 = np.where(gt_np == 4, gt_np, 0)
-    #one hot encoding
+    # One hot encoding
     onegt1 = np.where(gt1 != 0, 1, 0)
     onegt2 = np.where(gt2 != 0, 1, 0)
     onegt3 = np.where(gt3 != 0, 1, 0)
     onegt4 = np.where(gt4 != 0, 1, 0)
 
-    #per class
+    # Per class
     predicted_np1 = np.where(predicted_np == 1, predicted_np, 0)
     predicted_np2 = np.where(predicted_np == 2, predicted_np, 0)
     predicted_np3 = np.where(predicted_np == 3, predicted_np, 0)
     predicted_np4 = np.where(predicted_np == 4, predicted_np, 0)
-    #one hot encoding
+    # One hot encoding
     onepr1 = np.where(predicted_np1 != 0, 1, 0)
     onepr2 = np.where(predicted_np2 != 0, 1, 0)
     onepr3 = np.where(predicted_np3 != 0, 1, 0)
@@ -190,27 +182,22 @@ def calculate(gt_np, predicted_np):
     onegts = [onegt1, onegt2, onegt3, onegt4]
     onepred = [onepr1, onepr2,onepr3, onepr4]
 
-    #clDICE
+    # clDICE
     cldice = cldice2(onepred, onegts)
 
-    #DICE
+    # DICE
     dice = volume_dice(onepred, onegts)
 
-    #IoU
+    # IoU
     iou = IoU(onegts, onepred)
 
-    #Distance
+    # Distance
     patient_hd, patient_95hd, patient_asd = distance_metric(onegts, onepred)
 
     return [dice, cldice, iou, patient_hd, patient_95hd, patient_asd]
 
 
-
-
-
-
-
-#FOR THE FOLLOWING PATIENT LIST, GATHER METRICS
+# ++FOR THE FOLLOWING PATIENT LIST, GATHER METRICS++
 id_list = [3,4,6,20,22,26,29,33]    #patients to be tested
 patient_results = []
 
@@ -250,7 +237,7 @@ class3='Trachea'
 class4='Aorta'
 print('\n')
 
-#CALCULATE MEAN OF VALIDATION OVER EACH CLASS
+# ++CALCULATE MEAN OF VALIDATION OVER EACH CLASS++
 #np.mean(dice_, axis=0),np.mean(cldice_, axis=0),np.mean(iou_, axis=0),np.mean(hd, axis=0),np.mean(hd95, axis=0),np.mean(asd, axis=0)
 d = np.mean(dice_, axis=0)
 c = np.mean(cldice_, axis=0)
@@ -259,7 +246,7 @@ h = np.mean(hd, axis=0)
 h95 = np.mean(hd95, axis=0)
 a = np.mean(asd, axis=0)
 
-#ADD TITLE ENTRY FOR ROW
+# ++ADD TITLE ENTRY FOR ROW++
 d = np.append('DICE', d)
 c = np.append('clDICE', c)
 iu = np.append('IoU', iu)
@@ -269,6 +256,5 @@ a = np.append('ASD', a)
 
 results = np.array([d,c,iu,h,h95,a])
 
-#REPORT VAL MEANS
+# ++REPORT VAL MEANS++
 print(tabulate.tabulate(results, headers=['Metric',class1,class2,class3,class4]))
-

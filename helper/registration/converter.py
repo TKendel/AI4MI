@@ -5,9 +5,10 @@ from os import walk, remove, rename
 from os.path import join, isfile
 
 
-"""
+'''
 Converter used for creating compressed nifti files
-"""
+'''
+
 path = 'data\segthor_train\\train'
 # Iterate over files in directory
 for subdir, dirs, files in walk(path):
