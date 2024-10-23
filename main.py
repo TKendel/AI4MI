@@ -137,6 +137,8 @@ def setup(args) -> tuple[nn.Module, Any, Any, DataLoader, DataLoader, int]:
 
     return (net, optimizer, device, train_loader, val_loader, K)
 
+#def normalise(metric, direction):
+
 
 def runTraining(args):
     if args.dataset =='SEGTHOR': 
@@ -366,7 +368,7 @@ def runTraining(args):
                     # log_slicehd[e, patient_idx, :] = sb_hd.to(dtype=log_slicehd.dtype, device=log_slicehd.device)  # 
                     log_cldice[e, patient_idx, :] = cldice_score.to(dtype=log_cldice.dtype, device=log_cldice.device)
 
-                
+                print(f"log_3d_dice: {log_3d_dice}")
                 # Print the metrics - mean (excluding the background) - per organ 
                 for metric_name, log_metric in [("3dDice", log_3d_dice), ("3dIOU", log_3d_IOU)]:  
                     print(f"{metric_name}: {log_metric[e, :, 1:].mean():05.3f}\t", end='')  
@@ -455,10 +457,12 @@ def runTraining(args):
         #stops if metrics don't improve after 5 epochs above epoch 15
         patience = 25 #how many epochs it needs to wait to decide to stop
 
-        if e >= 15:
-            if (e - best_epoch) >= patience:
-                print(f"Stopping early at epoch {e} due to no improvement in {patience} epochs after epoch {best_epoch}")
-                break
+        # if e >= 50:
+        #     if (e - best_epoch) >= patience:
+        #         print(f"Stopping early at epoch {e} due to no improvement in {patience} epochs after epoch {best_epoch}")
+        #         break
+
+        
 
 
 def main():
@@ -956,4 +960,3 @@ if __name__ == '__main__':
 
 # if __name__ == '__main__':
 #     main()
-
