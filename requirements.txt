@@ -7,5 +7,12 @@ pillow
 scikit-image
 matplotlib
 nnunetv2
+#nnunet
+git+https://github.com/FabianIsensee/hiddenlayer.git
+opencv-python
+nibabel
+scipy
+SimpleITK
+tabulate
 UNet
 seg-metrics==1.2.8
