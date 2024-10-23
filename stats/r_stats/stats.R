@@ -138,24 +138,24 @@ for(p in 1:length(preprocessing)){
     #Because of formatting of the data, this needs to be hard coded
     if(length(p_values)==5){
       #No background case
-      p_values=append(p_values, "Null", after = 1)
-      p_lavene=append(p_lavene, "Null", after = 1)
-      p_ks=append(p_ks, "Null", after = 1)
+      p_values=append(p_values, "N/A", after = 1)
+      p_lavene=append(p_lavene, "N/A", after = 1)
+      p_ks=append(p_ks, "N/A", after = 1)
     }
     if(length(p_values)==3){
       #No background case
-      p_values=append(p_values, "Null", after = 1)
-      p_lavene=append(p_lavene, "Null", after = 1)
-      p_ks=append(p_ks, "Null", after = 1)
+      p_values=append(p_values, "N/A", after = 1)
+      p_lavene=append(p_lavene, "N/A", after = 1)
+      p_ks=append(p_ks, "N/A", after = 1)
       for (r in 1:2){
-        p_values=append(p_values, "Null", after = 3)
-        p_lavene=append(p_lavene, "Null", after = 3)
-        p_ks=append(p_ks, "Null", after = 3)
+        p_values=append(p_values, "N/A", after = 3)
+        p_lavene=append(p_lavene, "N/A", after = 3)
+        p_ks=append(p_ks, "N/A", after = 3)
       }
     }
     if (length(p_values)<6){
       difference = 6-length(p_values)
-      fill_in = rep('NULL', difference)
+      fill_in = rep('N/A', difference)
       p_values = c(p_values, fill_in)
       p_lavene = c(p_lavene, fill_in)
       p_ks = c(p_ks, fill_in)
