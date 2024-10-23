@@ -103,7 +103,7 @@ broken_heart_17 = rotate(broken_heart_17, angle=-26, reshape=False)   #Rotate ma
 #We don't want partial classes (between 0 and 2), so we round everything that is not 0 to 2
 print(broken_heart_17.shape)
 
-#roubd all values to two
+#round all values to two
 broken_heart_17 =  np.where(broken_heart_17 > 0, 2, 0)#.astype(np.int8)  #because we are reseting to 2, we get an error for sending int64, use .astype(np.int8)
 
 #Transform broken heart

@@ -14,7 +14,7 @@ class Preprocessing:
         Normalize image by adding a low and high value which should be included in the grayscale colour range,
         If it is a 0, 1 the output will have the darkest black from the inital and whites whites typically resulting in bones! 
         '''
-        self.img = cv.normalize(self.img, None, 0, 255, cv.NORM_MINMAX)
+        self.img = cv.normalize(self.img, None, 0, 255, cv.NORM_MINMAX, cv.CV_8U)
 
     def equalize(self):
         '''
@@ -73,13 +73,28 @@ class Preprocessing:
         '''
         Turn down the contrast 
         '''
-        self.img = np.uint8(adjust_gamma(self.img, gamma_value))
+        self.img = adjust_gamma(self.img, gamma_value)
 
     def logCorrection(self, log_value):
         '''
         Turn up the contrast 
         '''
-        self.img = np.uint8(adjust_log(self.img, log_value))
+        self.img = adjust_log(self.img, log_value)
+
+    def CLAHEClipping(self):
+        '''
+        Apply CLAHE clipping to image 
+        '''
+        clahe = cv.createCLAHE(clipLimit=2.0, tileGridSize=(8,8))
+        self.img = clahe.apply(self.img)
+
+    def closing(self):
+        '''
+        Apply closing to the image. Good for removing noise but removes data on edges!
+        '''
+        kernel = cv.getStructuringElement(cv.MORPH_ELLIPSE,(3,3 ))
+        self.img = cv.morphologyEx(self.img, cv.MORPH_CLOSE, kernel)
+
 
     def save(self):
         '''

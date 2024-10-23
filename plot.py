@@ -31,82 +31,10 @@
 # # BUT THIS CAN BE DIFFERENT MAKE SURE IT IS NOT CUT OFF
 # # """
 import argparse
-from pathlib import Path
-
 import numpy as np
 import matplotlib.pyplot as plt
 
-
-# # def run(args: argparse.Namespace) -> None:
-# #     metrics: np.ndarray = np.load(args.metric_file)
-    
-# #     if metrics.ndim == 2:
-# #         E, N = metrics.shape
-# #         K = 1
-# #     elif metrics.ndim == 3:
-# #         E, N, K = metrics.shape
-
-# #     #If we ever get python 3.11, we can change to match and remove the upper two if statements
-# #     """
-# #     match metrics.ndim:
-# #         case 2:
-# #             E, N = metrics.shape
-# #             K = 1
-# #         case 3:
-# #             E, N, K = metrics.shape
-# #     """
-# #     if 'loss_val' in args.metric_file.name:
-# #         title = f"{args.model} Loss - Validation"
-# #         ylabel = "Loss"
-# #         llimit = 0
-# #         ulimit = 0.08
-# #     elif 'dice_val' in args.metric_file.name:
-# #         title = f"{args.model} Dice Score - Validation"
-# #         ylabel = "Dice Score"
-# #         llimit = 0
-# #         ulimit = 1
-# #     elif 'dice3d_val' in args.metric_file.name:
-# #         title = f"{args.model} Volumetric Dice Score - Validation"
-# #         ylabel = "VDice Score"
-# #         llimit = 0
-# #         ulimit = 1
-# #         ylabel = "VDice"
-        
-
-# #     fig, ax = plt.subplots(figsize=(8, 6))  # Adjusted size for better readability
-# #     ax.set_title(title, fontsize=16)  # Title dynamically set
-# #     ax.set_ylim([llimit, ulimit])  # Y-axis range from 0 to 1 as requested
-
-# #     epcs = np.arange(E)
-
-# #     # Loop to plot individual classes
-# #     for k in range(1, K):
-# #         y = metrics[:, :, k].mean(axis=1)
-# #         ax.plot(epcs, y, label=f"Class {k}", linewidth=2)  # Increase line width
-
-# #     # Plot for all classes
-# #     if K > 2:
-# #         ax.plot(epcs, metrics.mean(axis=1).mean(axis=1), label="All Classes", linewidth=3, color='purple')
-# #         ax.legend(fontsize=12, loc="lower right")  # Adjust legend font size and position
-# #     else:
-# #         ax.plot(epcs, metrics.mean(axis=1), linewidth=3)
-
-# #     # Adding labels and grid
-# #     ax.set_xlabel("Epochs", fontsize=14)
-# #     ax.set_ylabel(ylabel, fontsize=14)  # Y-axis label dynamically set
-# #     ax.grid(True, which='both', linestyle='--', linewidth=0.7, alpha=0.6)  # Add grid lines for clarity
-
-# #     # Adding tighter layout
-# #     fig.tight_layout()
-
-# #     # Save the plot if needed
-# #     if args.dest:
-# #         fig.savefig(args.dest, dpi=300, bbox_inches='tight')  # Save with high DPI for clarity
-
-# #     # Show the plot
-# #     if not args.headless:
-# #         plt.show()
-    
+from pathlib import Path
 
 
 def run(args: argparse.Namespace) -> None:
@@ -116,7 +44,6 @@ def run(args: argparse.Namespace) -> None:
         K = 1
     elif metrics.ndim == 3:
         E, N, K = metrics.shape
-
 
     fig = plt.figure()
     ax = fig.gca()
@@ -152,7 +79,6 @@ def get_args() -> argparse.Namespace:
                         help="Does not display the plot and save it directly (implies --dest to be provided.")
 
     args = parser.parse_args()
-
     print(args)
 
     return args

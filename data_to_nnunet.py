@@ -1,10 +1,10 @@
-#Format data for nnunet raw fodler
-
 import os
 import shutil
 
 
-
+"""
+Format data for nnunet raw fodler
+"""
 patient_list = list(range(1,41)) #there are 40 patients
 
 for patient in patient_list:
@@ -19,11 +19,3 @@ for patient in patient_list:
         print('Patient', patient, '/40')
 
 print("All files have been copied and formatted")
-
-
-
-
-
-
-
-

@@ -3,6 +3,7 @@ import random
 import matplotlib.pyplot as plt
 import cv2
 
+
 def get_image_paths(folder):
     return [os.path.join(folder, f) for f in os.listdir(folder) if f.endswith('.png')]
 

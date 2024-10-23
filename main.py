@@ -274,8 +274,6 @@ def runTraining(args):
 
                     pred_logits = net(img)
                     pred_probs = F.softmax(1 * pred_logits, dim=1)  # 1 is the temperature parameter
-
-                    
                     
                     # Metrics computation, not used for training
                     pred_seg = probs2one_hot(pred_probs)  # shape (B, C, H, W)
@@ -286,7 +284,6 @@ def runTraining(args):
                  
                     log_dice[e, j:j + B, :] = dice_coef(gt, pred_seg)  # One DSC value per sample and per class
                     log_IOU[e, j:j + B, :] = iou_coef(gt, pred_seg)  # One IOU value per sample and per class
-
 
                     # cross entropy loss 
                     loss = loss_fn(pred_probs, gt)
@@ -310,7 +307,7 @@ def runTraining(args):
                     # MAKE SURE TO SPECIFY THE CORRECT LOSS FUNCTION HERE - LOSS(ce loss), DLOSS (dice loss), 
                     # FLOSS (focal loss), GDLOSS (generalised dice loss), CLOSS (combined loss = 0.5*ce + 0.5*dice)
                     if opt:  # Only for training
-                        loss.backward()
+                        floss.backward()
                         opt.step()
 
                     if m == 'val':

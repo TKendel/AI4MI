@@ -3,6 +3,10 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 
+"""
+Used for manual segmentation of the heart.
+Discontinued
+"""
 for i in range(20, 202):
     iterator = 0
     if i < 10:
