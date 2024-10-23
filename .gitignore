@@ -32,3 +32,6 @@ stats/r_stats/results/*
 stats/r_stats/results/plot_paper.py
 stats/r_stats/paperplots/*
 stats/r_stats/p_values/*
+.job
+.out
+paperplots/

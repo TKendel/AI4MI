@@ -14,3 +14,5 @@ nibabel
 scipy
 SimpleITK
 tabulate
+UNet
+seg-metrics==1.2.8
