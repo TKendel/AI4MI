@@ -56,7 +56,7 @@ from utils import (Dcm,
                    save_images)
 
 from metrics import volume_dice, volume_iou, distance_based_metrics, cldice # volume_hausdorff, slice_hausdorff, avg_surface_distance
-from losses import CrossEntropy, DiceLoss, BinaryFocalLoss, GeneralizedDice, CombinedLoss
+from losses import CrossEntropy, CombinedLoss #FocalLoss DiceLoss, BinaryFocalLoss, GeneralizedDice, 
 
 
 
@@ -81,14 +81,16 @@ def setup(args) -> tuple[nn.Module, Any, Any, DataLoader, DataLoader, int]:
 
     # Learning rate & adam optimizer
     lr = 0.0005
-    optimizer = torch.optim.Adam(net.parameters(), lr=lr, betas=(0.9, 0.999))
-    # optimizer = torch.optim.AdamW(net.parameters(), lr=lr, betas=(0.9, 0.999), weight_decay=0.01)
-    # optimizer = torch.optim.SGD(net.parameters(), lr=lr, weight_decay=0.01)
+    #optimizer = torch.optim.Adam(net.parameters(), lr=lr, betas=(0.9, 0.999))
+    optimizer = torch.optim.AdamW(net.parameters(), lr=lr, betas=(0.9, 0.999), weight_decay=0.01)
 
     # Adding a learning rate scheduler
-    scheduler = lr_scheduler.PolynomialLR(optimizer, total_iters=5, power=1.0)
-    #scheduler = lr_scheduler.CosineAnnealingLR(optimizer, T_max=5)
-    #scheduler = lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.1, patience=10, verbose=True)
+    scheduler = None
+    #scheduler = lr_scheduler.PolynomialLR(optimizer, total_iters=25, power=1.0)
+    #scheduler = lr_scheduler.CosineAnnealingLR(optimizer, T_max=25)
+    #scheduler = lr_scheduler.ReduceLROnPlateau(optimizer, mode='max', factor=0.1, patience=5, verbose=True)
+
+    # print(f"Scheduler initialized: {scheduler}")
 
     # Dataset part
     B: int = datasets_params[args.dataset]['B']
@@ -135,9 +137,7 @@ def setup(args) -> tuple[nn.Module, Any, Any, DataLoader, DataLoader, int]:
 
     args.dest.mkdir(parents=True, exist_ok=True)
 
-    return (net, optimizer, device, train_loader, val_loader, K)
-
-#def normalise(metric, direction):
+    return (net, optimizer, scheduler, device, train_loader, val_loader, K)
 
 
 def runTraining(args):
@@ -147,14 +147,16 @@ def runTraining(args):
         sampleV = 100
     
     print(f">>> Setting up to train on {args.dataset} with {args.mode}")
-    net, optimizer, device, train_loader, val_loader, K = setup(args)
+    net, optimizer, scheduler, device, train_loader, val_loader, K = setup(args)
+    print(f"Scheduler after setup: {scheduler}")
+
 
     if args.mode == "full":
         loss_fn = CrossEntropy(idk=list(range(K)))  # Supervise both background and foreground
         # dloss_fn = DiceLoss(idk=list(range(K)))  # Supervise both background and foreground
-        gdloss_fn = GeneralizedDice(idk=list(range(K)))
-        # closs_fn = CombinedLoss(idk=list(range(K)))
-        #fl_loss_fn = BinaryFocalLoss(cross_entropy=loss_fn, idk=list(range(K)))
+        #gdloss_fn = GeneralizedDice(idk=list(range(K)))
+        closs_fn = CombinedLoss(idk=list(range(K)))
+        #fl_loss_fn = FocalLoss(idk=list(range(K)), alpha=[1,1,1,1,1])
     # elif args.mode in ["partial"] and args.dataset in ['SEGTHOR', 'SEGTHOR_STUDENTS']:
     #     loss_fn = CrossEntropy(idk=[0, 1, 3, 4])  # Do not supervise the heart (class 2)
     #     dloss_fn = DiceLoss(idk=[0, 1, 3, 4])  # Do not supervise the heart (class 2)
@@ -166,19 +168,19 @@ def runTraining(args):
     # Losses
     log_loss_tra: Tensor = torch.zeros((args.epochs, len(train_loader)))  
     # log_dloss_tra: Tensor = torch.zeros((args.epochs, len(train_loader)))  
-    log_gdloss_tra: Tensor = torch.zeros((args.epochs, len(train_loader))) 
-    #log_closs_tra: Tensor = torch.zeros((args.epochs, len(train_loader)))  
-    # log_focal_tra: Tensor = torch.zeros((args.epochs, len(train_loader)))
+    #log_gdloss_tra: Tensor = torch.zeros((args.epochs, len(train_loader))) 
+    log_closs_tra: Tensor = torch.zeros((args.epochs, len(train_loader)))  
+    #log_focal_tra: Tensor = torch.zeros((args.epochs, len(train_loader)))
     # Metrics 2d
     log_dice_tra: Tensor = torch.zeros((args.epochs, len(train_loader.dataset), K)) 
     log_IOU_tra: Tensor = torch.zeros((args.epochs, len(train_loader.dataset), K))
 
     # Losses
     log_loss_val: Tensor = torch.zeros((args.epochs, len(val_loader)))
-    #log_closs_val: Tensor = torch.zeros((args.epochs, len(val_loader)))
+    log_closs_val: Tensor = torch.zeros((args.epochs, len(val_loader)))
     # log_dloss_val: Tensor = torch.zeros((args.epochs, len(val_loader))) 
-    log_gdloss_val: Tensor = torch.zeros((args.epochs, len(val_loader)))
-    # log_focal_val: Tensor = torch.zeros((args.epochs, len(val_loader)))
+    #log_gdloss_val: Tensor = torch.zeros((args.epochs, len(val_loader)))
+    #log_focal_val: Tensor = torch.zeros((args.epochs, len(val_loader)))
     # Metrics 2d
     log_dice_val: Tensor = torch.zeros((args.epochs, len(val_loader.dataset), K))
     log_IOU_val: Tensor = torch.zeros((args.epochs, len(val_loader.dataset), K))
@@ -193,9 +195,9 @@ def runTraining(args):
 
 
     #initialize the 'best scores'
-    best_dice: float = 0
+    #best_dice: float = 0
     # best_iou: float = 0
-    # best_95hd: float = float('inf')  # Hausdorff is minimized, so initialize to infinity
+    best_95hd: float = float('inf')  # Hausdorff is minimized, so initialize to infinity
     best_3d_dice: float = 0
     
     for e in range(args.epochs):
@@ -204,27 +206,29 @@ def runTraining(args):
             if m == 'train':
                 net.train()
                 opt = optimizer
+                sched = scheduler
                 cm = Dcm
                 desc = f">> Training   ({e: 4d})"
                 loader = train_loader
                 log_loss = log_loss_tra
-                #log_closs = log_closs_tra
+                log_closs = log_closs_tra
                 # log_dloss = log_dloss_tra
-                log_gdloss = log_gdloss_tra
+                #log_gdloss = log_gdloss_tra
                 # log_focal = log_focal_tra
                 log_dice = log_dice_tra
                 log_IOU = log_IOU_tra
             if m == 'val':
                 net.eval()
                 opt = None
+                sched = None
                 cm = torch.no_grad
                 desc = f">> Validation ({e: 4d})"
                 loader = val_loader
                 log_loss = log_loss_val
-                #log_closs = log_closs_val
+                log_closs = log_closs_val
                 # log_focal = log_focal_val
                 # log_dloss = log_dloss_val
-                log_gdloss = log_gdloss_val
+                #log_gdloss = log_gdloss_val
                 log_dice = log_dice_val
                 log_IOU = log_IOU_val 
                 log_3d_dice = log_3d_dice_val
@@ -285,19 +289,20 @@ def runTraining(args):
                     log_dice[e, j:j + B, :] = dice_coef(gt, pred_seg)  # One DSC value per sample and per class
                     log_IOU[e, j:j + B, :] = iou_coef(gt, pred_seg)  # One IOU value per sample and per class
 
+
                     # cross entropy loss 
                     loss = loss_fn(pred_probs, gt)
                     log_loss[e, i] = loss.item()  # One loss value per batch (averaged in the loss)
 
-                    # closs = closs_fn(pred_probs, gt)
-                    # log_closs[e, i] = closs.item()
+                    closs = closs_fn(pred_probs, gt)
+                    log_closs[e, i] = closs.item()
 
                     # # dice loss
                     # dloss = dloss_fn(pred_probs, gt)
                     # log_dloss[e, i] = dloss.item() 
 
-                    gdloss = gdloss_fn(pred_probs, gt)
-                    log_gdloss[e, i] = gdloss.item() 
+                    # gdloss = gdloss_fn(pred_probs, gt)
+                    # log_gdloss[e, i] = gdloss.item() 
 
                     # focal loss
                     # floss = fl_loss_fn(pred_probs, gt)
@@ -307,8 +312,9 @@ def runTraining(args):
                     # MAKE SURE TO SPECIFY THE CORRECT LOSS FUNCTION HERE - LOSS(ce loss), DLOSS (dice loss), 
                     # FLOSS (focal loss), GDLOSS (generalised dice loss), CLOSS (combined loss = 0.5*ce + 0.5*dice)
                     if opt:  # Only for training
-                        floss.backward()
+                        closs.backward()
                         opt.step()
+                        
 
                     if m == 'val':
                         with warnings.catch_warnings():
@@ -324,15 +330,18 @@ def runTraining(args):
                     postfix_dict: dict[str, str] = {"Dice": f"{log_dice[e, :j, 1:].mean():05.3f}",
                                                     "IoU": f"{log_IOU[e, :j, 1:].mean():05.3f}",
                                                     "Loss": f"{log_loss[e, :i + 1].mean():5.2e}",
-                                                    # "Focal Loss": f"{log_focal[e, :i + 1].mean():5.2e}",
+                                                    "CLoss": f"{log_closs[e, :i + 1].mean():5.2e}"
+                                                    # "Focal Loss": f"{log_focal[e, :i + 1].mean():5.2e}"
                                                     # "dLoss": f"{log_dloss[e, :i + 1].mean():5.2e}",
-                                                    "gdLoss": f"{log_gdloss[e, :i + 1].mean():5.2e}"
+                                                    # "gdLoss": f"{log_gdloss[e, :i + 1].mean():5.2e}"
                                                     }
                     # Print the means per organ
                     if K > 2:
                         postfix_dict |= {f"Dice-{k}": f"{log_dice[e, :j, k].mean():05.3f}" for k in range(1, K)}
                         postfix_dict |= {f"IoU-{k}": f"{log_IOU[e, :j, k].mean():05.3f}" for k in range(1, K)}
                     tq_iter.set_postfix(postfix_dict)
+            
+
             
             if m == 'val':
                 all_predictions_tensor = torch.cat(all_predictions, dim=0)
@@ -365,7 +374,7 @@ def runTraining(args):
                     # log_slicehd[e, patient_idx, :] = sb_hd.to(dtype=log_slicehd.dtype, device=log_slicehd.device)  # 
                     log_cldice[e, patient_idx, :] = cldice_score.to(dtype=log_cldice.dtype, device=log_cldice.device)
 
-                print(f"log_3d_dice: {log_3d_dice}")
+                
                 # Print the metrics - mean (excluding the background) - per organ 
                 for metric_name, log_metric in [("3dDice", log_3d_dice), ("3dIOU", log_3d_IOU)]:  
                     print(f"{metric_name}: {log_metric[e, :, 1:].mean():05.3f}\t", end='')  
@@ -389,19 +398,30 @@ def runTraining(args):
                         print(f"{metric_name}-{class_idx}: {log_metric[e, :, k].mean():05.3f}\t", end='')
                     print() 
 
+        
+            current_3_dice: float = log_3d_dice_val[e, :, 1:].mean().item()
+            if m=='train'and sched:  
+                print("yes we can apply scheduler")
+                # Update scheduler after each epoch (training phase only)
+
+                # if reduce on plateau:
+                sched.step(current_3_dice)
+                # if cosine/ poly:
+                #sched.step()
+
         # I save it at each epoch, in case the code crashes or I decide to stop it early
         np.save(args.dest / "loss_tra.npy", log_loss_tra)
-        # np.save(args.dest / "closs_tra.npy", log_closs_tra)
+        np.save(args.dest / "closs_tra.npy", log_closs_tra)
         # np.save(args.dest / "dloss_tra.npy", log_dloss_tra)
-        np.save(args.dest / "gdloss_tra.npy", log_gdloss_tra)
+        # np.save(args.dest / "gdloss_tra.npy", log_gdloss_tra)
         # np.save(args.dest / "floss_tra.npy", log_focal_tra)
         np.save(args.dest / "dice_tra.npy", log_dice_tra)
         np.save(args.dest / "iou_tra.npy", log_IOU_tra)
         
         np.save(args.dest / "loss_val.npy", log_loss_val)
-        # np.save(args.dest / "closs_val.npy", log_closs_val)
+        np.save(args.dest / "closs_val.npy", log_closs_val)
         # np.save(args.dest / "dloss_val.npy", log_dloss_val)
-        np.save(args.dest / "gdloss_val.npy", log_gdloss_val)
+        # np.save(args.dest / "gdloss_val.npy", log_gdloss_val)
         # np.save(args.dest / "floss_val.npy", log_focal_val)
         np.save(args.dest / "dice_val.npy", log_dice_val)
         np.save(args.dest / "iou_val.npy", log_IOU_val)
@@ -419,19 +439,20 @@ def runTraining(args):
         #current_dice: float = log_dice_val[e, :, 1:].mean().item()
         # current_iou: float = log_3d_IOU_val[e, :, 1:].mean().item()
         current_3d_dice: float = log_3d_dice_val[e, :, 1:].mean().item()
-        # current_95hd: float = log_95hausdorff[e, :, 1:].mean().item()
+        current_95hd: float = log_95hausdorff[e, :, :].mean().item()
 
         # Check for improvements
-        if (current_3d_dice > best_3d_dice): #and (current_iou > best_iou) and (current_95hd < best_95hd):
+        if current_3d_dice > best_3d_dice: # and (current_3d_dice > best_3d_dice) and (current_iou > best_iou) and (current_95hd < best_95hd):
             print(f">>> Improved metrics at epoch {e}:")
             #print(f"    Dice: {best_dice:05.3f} -> {current_dice:05.3f} DSC")
-            print(f"   3D Dice: {best_3d_dice:05.3f} -> {current_3d_dice:05.3f} DSC")
+            print(f"    3D Dice: {best_3d_dice:05.3f} -> {current_3d_dice:05.3f} DSC")
             # print(f"    IoU: {best_iou:05.3f} -> {current_iou:05.3f} IoU")
-            # print(f"    Hausdorff: {best_95hd:05.3f} -> {current_95hd:05.3f} HD")
+            print(f"    Hausdorff: {best_95hd:05.3f} -> {current_95hd:05.3f} HD")
 
             # Update best metrics
-            best_3d_dice = current_3d_dice
-            # best_3d_dice = current_3d_dice
+            #best_dice = current_dice
+            if current_3d_dice > best_3d_dice:
+                best_3d_dice = current_3d_dice
             # best_iou = current_iou
             # best_95hd = current_95hd
 
@@ -451,15 +472,14 @@ def runTraining(args):
 
             best_epoch = e
 
-        #stops if metrics don't improve after 5 epochs above epoch 15
-        patience = 25 #how many epochs it needs to wait to decide to stop
+        #stops if metrics don't improve after 5 epochs above epoch 15 (total e = 25)
+        #stops if metrics don't improve after 10 epochs above 50 (total e = 100)
+        patience = 10 #how many epochs it needs to wait to decide to stop
 
-        # if e >= 50:
-        #     if (e - best_epoch) >= patience:
-        #         print(f"Stopping early at epoch {e} due to no improvement in {patience} epochs after epoch {best_epoch}")
-        #         break
-
-        
+        if e >= 50:
+            if (e - best_epoch) >= patience:
+                print(f"Stopping early at epoch {e} due to no improvement in {patience} epochs after epoch {best_epoch}")
+                break
 
 
 def main():
@@ -957,3 +977,4 @@ if __name__ == '__main__':
 
 # if __name__ == '__main__':
 #     main()
+
