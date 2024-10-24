@@ -3,55 +3,64 @@ import shutil
 import numpy as np
 
 
-def moveGTfiles(seg_path):
+def moveGTfiles(root, file):
     '''
     Move GT files
     '''
-    val_list = [1,2,13,16,21,22,28,30,35,39]
+    valList = [1,2,13,16,21,22,28,30,35,39]
 
-    for root, dirs, files in os.walk(seg_path):
-        for file in files:
-            if file.endswith("GT.nii.gz") and int(root[-2:]) in val_list:
-                shutil.copyfile(os.path.join(root, file), f'group-10\\val\gt\Patient_{root[-2:]}.nii.gz')
-                print(root)
-                print(file)
+    if int(file[-2:]) in valList:
+        dest = f'group-10\\val\gt\Patient_{root[-2:]}.nii.gz'
+        shutil.copyfile(os.path.join(root, file), dest)
+        print(f"Moved file {file} to {dest}")
 
 
-def updateNpyShape(seg_path):
+def updateNpyShape(root, file):
     '''
     Transpose npy file dimensions
     '''
-    for root, dirs, files in os.walk(seg_path):
-        for file in files:
-            if file.endswith("val.npy"):
-                data = np.load(os.path.join(root, file))
-                if data.shape[1] == 10:
+    data = np.load(os.path.join(root, file))
 
-                    print(file)
-                    test = np.transpose(data, (0, 2, 1))
+    print(f"Transposing {file} with shape {data.shape}")
+    newDataShape = np.transpose(data, (1, 2, 0))
 
-                    assert test.shape[2] == 10
+    assert newDataShape.shape[2] == 100
 
-                    np.save(os.path.join(root, file), test)
-                    print(f"Saved {file} with the shape {test.shape}")
-
-                elif data.shape[1] == 1967:
-                    print(file)
-                    test = np.transpose(data, (0, 2, 1))
-
-                    assert test.shape[2] == 1967
-
-                    np.save(os.path.join(root, file), test)
-                    print(f"Saved {file} with the shape {test.shape}")
+    np.save(os.path.join(root, file), newDataShape)
+    print(f"Saved {file} with the shape {newDataShape.shape}")
 
 
-seg_path = "group-10\\val"
+def getBestEpoch(root, file, best_epoch):
+    data = np.load(os.path.join(root, file))
+    bestEpochVolume = data[:, :, best_epoch]
 
-#moveGTfiles(seg_path)
-#updateNpyShape(seg_path)
+    addDimension = np.expand_dims(bestEpochVolume, axis=2)
+
+    np.save(os.path.join(root, file), addDimension)
+    print(f"Took out the best epoch given {best_epoch}, saved to {os.path.join(root, file)}")
+
+
+updateShape = False
+moveFiles = False
+getBestMetrics = True
+segPath = "group-10\\val"
+
+f = open("data\BER\\best_epoch.txt", "r")
+bestEpoch = int(f.readline())
+
+for root, dirs, files in os.walk(segPath):
+    for file in files:
+        if file.endswith("val.npy"):
+            if moveFiles == True:
+                # seg_path should be the folder from which we want to transfer metrics
+                moveGTfiles(root, file)
+            if updateShape == True:
+                updateNpyShape(root, file)
+            if getBestMetrics == True:
+                getBestEpoch(root, file, bestEpoch)
 
 # Sanity check
-for root, dirs, files in os.walk(seg_path):
+for root, dirs, files in os.walk(segPath):
     for file in files:
         if file.endswith("val.npy"):
             print(root, file)
