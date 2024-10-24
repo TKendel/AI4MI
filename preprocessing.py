@@ -3,11 +3,13 @@ import numpy as np
 import matplotlib.pyplot as plt
 from skimage.exposure import match_histograms, adjust_gamma, adjust_log, equalize_adapthist
 
+
 class Preprocessing:
 
     def __init__(self, img, path):
         self.img = img
         self.path = path
+
 
     def normalize(self):
         '''
@@ -16,18 +18,20 @@ class Preprocessing:
         '''
         self.img = cv.normalize(self.img, None, 0, 255, cv.NORM_MINMAX, cv.CV_8U)
 
+
     def equalize(self):
         '''
         Spread out the colour histogram of the image resulting in a higher contrast image
         '''
         self.img = cv.equalizeHist(self.img)
 
+
     def adaptiveEqualize(self, clip_limit=0.03):
         '''
-
         https://scikit-image.org/docs/stable/api/skimage.exposure.html#skimage.exposure.equalize_adapthist
         '''
         self.img = equalize_adapthist(self.img, clip_limit=clip_limit)
+
  
     def bilateralFilter(self):
         '''
@@ -35,6 +39,7 @@ class Preprocessing:
         https://docs.opencv.org/4.x/d4/d86/group__imgproc__filter.html#ga9d7064d478c95d60003cf839430737ed
         '''
         self.img = cv.bilateralFilter(self.img, 2, 3, 3)
+
 
     def __drawBox(self, lines):
         '''
@@ -46,6 +51,7 @@ class Preprocessing:
                 self.img = cv.rectangle(self.img, (lines[i][0][2]+5, 0), (255,255), (0, 0, 0), -1)
 
         return lines
+
 
     def removeTable(self, tableXY):
         '''
@@ -61,7 +67,8 @@ class Preprocessing:
             return tableXY
         else:
             return self.__drawBox(tableXY)
-        
+
+
     def histogramMatching(self, reference):
         '''
         Tries to match the colour histogram by using the reference image as a reference on image.
@@ -69,11 +76,13 @@ class Preprocessing:
         '''
         self.img = match_histograms(self.img, reference)
 
+
     def gammaCorrection(self, gamma_value):
         '''
         Turn down the contrast 
         '''
         self.img = adjust_gamma(self.img, gamma_value)
+
 
     def logCorrection(self, log_value):
         '''
@@ -81,14 +90,19 @@ class Preprocessing:
         '''
         self.img = adjust_log(self.img, log_value)
 
-    def CLAHEClipping(self, clipLimit=2.0):
+
+    def CLAHEClipping(self):
         '''
         Apply CLAHE clipping to image 
         '''
-        clahe = cv.createCLAHE(clipLimit=clipLimit, tileGridSize=(8,8))
+        clahe = cv.createCLAHE(clipLimit=2, tileGridSize=(8,8))
         self.img = clahe.apply(self.img)
 
+
     def closing(self):
+        '''
+        Apply closing to the image. Good for removing noise but removes data on edges!
+        '''
         kernel = cv.getStructuringElement(cv.MORPH_ELLIPSE,(3,3 ))
         self.img = cv.morphologyEx(self.img, cv.MORPH_CLOSE, kernel)
 

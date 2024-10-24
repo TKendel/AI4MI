@@ -22,10 +22,10 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-
-from torch import einsum
-
+import torch
 from utils import simplex, sset
+from torch import einsum
+from torch import Tensor
 
 
 class CrossEntropy():
@@ -42,10 +42,10 @@ class CrossEntropy():
         log_p = (pred_softmax[:, self.idk, ...] + 1e-10).log()
         mask = weak_target[:, self.idk, ...].float()
 
-        loss = - einsum("bkwh,bkwh->", mask, log_p)
+        # Pixel-wise cross-entropy loss (not yet reduced)
+        loss = -einsum("bkwh,bkwh->", mask, log_p)
         loss /= mask.sum() + 1e-10
-
-        return loss
+        return loss  # Return pixel-wise loss, not the reduced sum
 
 
 class PartialCrossEntropy(CrossEntropy):
@@ -61,6 +61,9 @@ class DiceLoss():
         print(f"Initialized {self.__class__.__name__} with {kwargs}")
 
     def __call__(self, pred_softmax, target):
+        """
+            Computes the Dice loss for the given predictions and target mask.
+        """
         assert pred_softmax.shape == target.shape
         assert simplex(pred_softmax)
         assert sset(target, [0, 1])
@@ -73,67 +76,126 @@ class DiceLoss():
         target_sum = einsum("bk...->bk", target)
 
         dice_score = (2. * intersection + self.smooth) / (pred_sum + target_sum + self.smooth)
+        # Average Dice score across all batches and classes
+        dice_score = dice_score.mean()
+
+        # Check if the single Dice score is within the valid range [0, 1]
+        if dice_score < 0 or dice_score > 1:
+            raise ValueError(f"Dice score out of range! Dice score: {dice_score} - Terminating training.")
 
         # Dice Loss is 1 - Dice Coefficient
-        loss = 1 - dice_score.mean()
+        loss = 1 - dice_score
 
         return loss
-
+    
 
 class PartialDiceLoss(DiceLoss):
     def __init__(self, **kwargs):
         super().__init__(idk=[1], **kwargs)
 
 
-class BinaryFocalLoss():
-    def __init__(self, cross_entropy, gamma=2, alpha=0.25, **kwargs):
-        """
-        Focal Loss for binary classification using the CrossEntropy implementation from above.
-        Arguments:
-        - cross_entropy: The base cross-entropy loss instance to use
-        - gamma: Focusing parameter to control how much to focus on hard example
-        - alpha: Balancing factor to adjust for class imbalance (alpha for class 1, 1-alpha for class 0)
-        """
-        self.cross_entropy = cross_entropy 
-        self.gamma = gamma
-        self.alpha = alpha
-        self.idk = kwargs['idk'] # Self.idk is used to filter out some classes of the target mask. Use fancy indexing
-        
-        print(f"Initialized {self.__class__.__name__} with gamma={self.gamma}, alpha={self.alpha}")
+# This version is specifically for FocalLoss, without the reduction applied
+class CrossEntropyPerClass():
+    """
+    Calculates cross-entropy loss per class to use for focal loss
+    """
+    def __init__(self, **kwargs):
+        # Self.idk is used to filter out some classes of the target mask. Use fancy indexing
+        self.idk = kwargs['idk']
+        print(f"Initialized {self.__class__.__name__} with {kwargs}")
 
     def __call__(self, pred_softmax, weak_target):
-        """
-        Arguments:
-        - pred_softmax: The predicted softmax probabilities from the model
-        - weak_target: The ground truth binary target mask, containing binary labels (0 or 1)
-        """
-
         assert pred_softmax.shape == weak_target.shape
         assert simplex(pred_softmax)
         assert sset(weak_target, [0, 1])
 
-        # Compute the base CE loss by calling instance of the existing CrossEntropy class
-        ce_loss = self.cross_entropy(pred_softmax, weak_target)
+        log_p = (pred_softmax[:, self.idk, ...] + 1e-10).log()
+        mask = weak_target[:, self.idk, ...].float()  # mask shape torch.Size([8, 5, 256, 256])
+        
+        # Pixel-wise cross-entropy loss (not yet reduced)
+        loss = -einsum("bkwh,bkwh->k", mask, log_p) 
+        #mask_sum_per_class = mask.sum(dim=(0, 2, 3)) + 1e-10  # sum over batch (0), height (2), and width (3)  
+        #loss /= mask_sum_per_class
+        return loss  # Shape will be [num_classes], one value per class
 
-        # Get the probability of the true class for each pixel
-        # since we're dealing with multiple classes and want to compute the loss only for certain organs, need to use [:, self.idk, ...]
-        # self.idk contains the indices of the classes we're interested in, so we can compute the loss only for those classes
-        prob_true = pred_softmax[:, self.idk, ...] * weak_target[:, self.idk, ...] + \
-                    (1 - pred_softmax[:, self.idk, ...]) * (1 - weak_target[:, self.idk, ...])
 
-        # Calculate focal weight: (1 - prob_true) ^ gamma
-        focal_weight = (1 - prob_true) ** self.gamma
+class FocalLoss():
+    """
+    Calculates multiclass focal loss.
+    Possibly with different alpha values if specified when calling to mitigate class imbalance.
+    """
+    def __init__(self, alpha=None, gamma=2, reduction='mean', **kwargs):
+        self.alpha = alpha if alpha is not None else torch.ones(len(kwargs['idk'])) 
+        self.gamma = gamma
+        self.reduction = reduction
+        self.ce_loss = CrossEntropyPerClass(**kwargs)
+        print(f"Initialized {self.__class__.__name__} with alpha={self.alpha}, gamma={self.gamma}")
 
-        # Apply the alpha balancing factor: α for class 1, (1 - α) for class 0
-        alpha_factor = weak_target[:, self.idk, ...] * self.alpha + \
-                       (1 - weak_target[:, self.idk, ...]) * (1 - self.alpha)
+    def __call__(self, pred_softmax: Tensor, target: Tensor) -> Tensor:
+        ce_loss = self.ce_loss(pred_softmax, target)
+        p_t = torch.exp(-ce_loss)
 
-        # Now calculate the focal loss = alpha_factor * focal_weight * ce_loss
-        focal_loss = alpha_factor * focal_weight * ce_loss
+        # Move self.alpha to the same device as p_t and ce_loss
+        if isinstance(self.alpha, list):
+            self.alpha = torch.tensor(self.alpha, dtype=p_t.dtype, device=p_t.device)
+        else:
+            self.alpha = self.alpha.to(p_t.device)  # Ensure alpha is on the same device
 
-        # Optionally: apply normalization instead of taking the mean
-        # Normalize focal_loss by the sum of the mask or relevant pixels
-        # normalized_loss = focal_loss / (weak_target[:, self.idk, ...].sum() + 1e-10)
-        # return normalized_loss # or normalized_loss.mean()
+        focal_loss = self.alpha * (1 - p_t) ** self.gamma * ce_loss
 
-        return focal_loss.mean() # reduce loss to a single scalar value
+
+        # Reduce the loss based on the reduction method
+        if self.reduction == 'mean':
+            return focal_loss.mean()  # Mean reduction to scalar
+        elif self.reduction == 'sum':
+            return focal_loss.sum()   # Sum reduction to scalar
+        else:
+            return focal_loss         # No reduction (per-pixel loss returned)
+
+
+class GeneralizedDice():
+    def __init__(self, **kwargs):
+        self.idk = kwargs['idk']
+        self.smooth = 1e-10  # Smoothing factor to avoid division by zero
+        print(f"Initialized {self.__class__.__name__} with {kwargs}")
+
+    def __call__(self, pred_softmax, target):
+        """
+            Computes the Generalized Dice loss.
+            Uses class weights inversely proportional to the square of the target mask to calculate the loss.
+        """
+        assert pred_softmax.shape == target.shape
+        assert simplex(pred_softmax)
+        assert sset(target, [0, 1])
+
+        pred = pred_softmax[:, self.idk, ...].float()
+        target = target[:, self.idk, ...].float()
+
+        # Calculate weight 
+        weight = 1 / ((einsum("bkwh->bk", target) + 1e-10)**2) 
+        # Calculate weighted dice score
+        intersection = weight * einsum("bkwh,bkwh->bk", pred, target)
+        union = weight * (einsum("bkwh->bk", pred) + einsum("bkwh->bk", target))
+
+        dice_score = (2 * intersection + 1e-10) / (union + 1e-10)
+
+        loss = 1- dice_score.mean()
+
+        return loss
+    
+
+class CombinedLoss:
+    def __init__(self, alpha=0.5, beta=0.5, **kwargs):
+        print(f"Initialized {self.__class__.__name__} with {kwargs}")
+        self.alpha = alpha
+        self.beta = beta
+        self.ce_loss = CrossEntropy(**kwargs)
+        self.dice_loss = DiceLoss(**kwargs)
+
+    def __call__(self, pred_softmax, target):
+        """
+            Computes a combined loss of CrossEntropy and Dice losses.
+        """
+        ce = self.ce_loss(pred_softmax, target)
+        dice = self.dice_loss(pred_softmax, target)
+        return self.alpha * ce + self.beta * dice

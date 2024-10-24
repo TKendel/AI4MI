@@ -1,6 +1,5 @@
 import numpy as np
 
-import numpy as np
 
 # Load and print train dice metrics
 dice_train = np.load('./results/segthor/floormetric/dice_tra.npy')

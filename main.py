@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+# #!/usr/bin/env python3
 
 # MIT License
 
@@ -52,7 +52,7 @@ from utils import (Dcm,
                    save_images)
 
 from metrics import volume_dice, volume_iou, distance_based_metrics, cldice # volume_hausdorff, slice_hausdorff, avg_surface_distance
-from losses import CrossEntropy, DiceLoss, BinaryFocalLoss
+from losses import CrossEntropy, CombinedLoss #FocalLoss DiceLoss, BinaryFocalLoss, GeneralizedDice, 
 
 
 
@@ -63,6 +63,7 @@ datasets_params["TOY2"] = {'K': 2, 'net': shallowCNN, 'B': 2}
 datasets_params["SEGTHOR"] = {'K': 5, 'net': ENet, 'B': 8}
 
 
+# MAIN.PY WITHOUT MODEL SELECTION: 
 def setup(args) -> tuple[nn.Module, Any, Any, DataLoader, DataLoader, int]:
     # Networks and scheduler
     gpu: bool = args.gpu and torch.cuda.is_available()
@@ -76,13 +77,10 @@ def setup(args) -> tuple[nn.Module, Any, Any, DataLoader, DataLoader, int]:
 
     # Learning rate & adam optimizer
     lr = 0.0005
-    optimizer = torch.optim.Adam(net.parameters(), lr=lr, betas=(0.9, 0.999))
-    # optimizer = torch.optim.AdamW(net.parameters(), lr=lr, betas=(0.9, 0.999), weight_decay=0.01)
+    optimizer = torch.optim.AdamW(net.parameters(), lr=lr, betas=(0.9, 0.999), weight_decay=0.01)
 
     # Adding a learning rate scheduler
-    #scheduler = lr_scheduler.PolynomialLR(optimizer, total_iters=5, power=1.0)
-    #scheduler = lr_scheduler.CosineAnnealingLR(optimizer, T_max=5)
-    #scheduler = lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.1, patience=10, verbose=True)
+    scheduler = None
 
     # Dataset part
     B: int = datasets_params[args.dataset]['B']
@@ -129,7 +127,7 @@ def setup(args) -> tuple[nn.Module, Any, Any, DataLoader, DataLoader, int]:
 
     args.dest.mkdir(parents=True, exist_ok=True)
 
-    return (net, optimizer, device, train_loader, val_loader, K)
+    return (net, optimizer, scheduler, device, train_loader, val_loader, K)
 
 
 def runTraining(args):
@@ -139,32 +137,28 @@ def runTraining(args):
         sampleV = 100
     
     print(f">>> Setting up to train on {args.dataset} with {args.mode}")
-    net, optimizer, device, train_loader, val_loader, K = setup(args)
+    net, optimizer, scheduler, device, train_loader, val_loader, K = setup(args)
+    print(f"Scheduler after setup: {scheduler}")
+
 
     if args.mode == "full":
         loss_fn = CrossEntropy(idk=list(range(K)))  # Supervise both background and foreground
-        dloss_fn = DiceLoss(idk=list(range(K)))  # Supervise both background and foreground
-        fl_loss_fn = BinaryFocalLoss(cross_entropy=loss_fn, idk=list(range(K)))
-    elif args.mode in ["partial"] and args.dataset in ['SEGTHOR', 'SEGTHOR_STUDENTS']:
-        loss_fn = CrossEntropy(idk=[0, 1, 3, 4])  # Do not supervise the heart (class 2)
-        dloss_fn = DiceLoss(idk=[0, 1, 3, 4])  # Do not supervise the heart (class 2)
-        fl_loss_fn = BinaryFocalLoss(cross_entropy=loss_fn, idk=[0, 1, 3, 4]) # Do not supervise the heart (class 2)
+        closs_fn = CombinedLoss(idk=list(range(K)))
     else:
         raise ValueError(args.mode, args.dataset)
 
     # Notice one has the length of the _loader_, and the other one of the _dataset_
     # Losses
     log_loss_tra: Tensor = torch.zeros((args.epochs, len(train_loader)))  
-    log_dloss_tra: Tensor = torch.zeros((args.epochs, len(train_loader)))  
-    log_focal_tra: Tensor = torch.zeros((args.epochs, len(train_loader)))
+    log_closs_tra: Tensor = torch.zeros((args.epochs, len(train_loader)))  
     # Metrics 2d
     log_dice_tra: Tensor = torch.zeros((args.epochs, len(train_loader.dataset), K)) 
     log_IOU_tra: Tensor = torch.zeros((args.epochs, len(train_loader.dataset), K))
 
     # Losses
     log_loss_val: Tensor = torch.zeros((args.epochs, len(val_loader)))
-    log_dloss_val: Tensor = torch.zeros((args.epochs, len(val_loader))) 
-    log_focal_val: Tensor = torch.zeros((args.epochs, len(val_loader)))
+    log_closs_val: Tensor = torch.zeros((args.epochs, len(val_loader)))
+
     # Metrics 2d
     log_dice_val: Tensor = torch.zeros((args.epochs, len(val_loader.dataset), K))
     log_IOU_val: Tensor = torch.zeros((args.epochs, len(val_loader.dataset), K))
@@ -174,14 +168,11 @@ def runTraining(args):
     log_3d_IOU_val = torch.zeros((args.epochs, sampleV, K))  
     log_hausdorff_val = torch.zeros((args.epochs, sampleV, K-1))   # do not calculate hd for background
     log_95hausdorff_val = torch.zeros((args.epochs, sampleV, K-1)) # do not calculate hd for background
-    # log_slicehd_val = torch.zeros((args.epochs, sampleV, K-1)) 
     log_asd_val = torch.zeros((args.epochs, sampleV, K-1)) # do not calculate asd for background
     log_cldice_val = torch.zeros((args.epochs, sampleV, 2)) #only for esophagus and aorta
 
 
-    #initialize the 'best scores'
-    best_dice: float = 0
-    best_iou: float = 0
+    # Initialize the 'best scores'
     best_95hd: float = float('inf')  # Hausdorff is minimized, so initialize to infinity
     best_3d_dice: float = 0
     
@@ -191,36 +182,36 @@ def runTraining(args):
             if m == 'train':
                 net.train()
                 opt = optimizer
+                sched = scheduler
                 cm = Dcm
                 desc = f">> Training   ({e: 4d})"
                 loader = train_loader
                 log_loss = log_loss_tra
-                log_dloss = log_dloss_tra
-                log_focal = log_focal_tra
+                log_closs = log_closs_tra
                 log_dice = log_dice_tra
                 log_IOU = log_IOU_tra
             if m == 'val':
                 net.eval()
                 opt = None
+                sched = None
                 cm = torch.no_grad
                 desc = f">> Validation ({e: 4d})"
                 loader = val_loader
                 log_loss = log_loss_val
-                log_focal = log_focal_val
-                log_dloss = log_dloss_val
+                log_closs = log_closs_val
                 log_dice = log_dice_val
                 log_IOU = log_IOU_val 
                 log_3d_dice = log_3d_dice_val
                 log_3d_IOU = log_3d_IOU_val
                 log_hausdorff = log_hausdorff_val
                 log_95hausdorff = log_95hausdorff_val
-                #log_slicehd = log_slicehd_val
                 log_asd = log_asd_val
                 log_cldice = log_cldice_val
 
                 all_predictions = [] # store the predictions each epoch
                 all_gt_slices = [] # store the gts each epoch
-            #If we ever get python 3.11, we can change to match and remove the upper two if statements
+
+            # If we ever get python 3.11, we can change to match and remove the upper two if statements
             """
             match m:
                 case 'train':
@@ -257,11 +248,10 @@ def runTraining(args):
 
                     pred_logits = net(img)
                     pred_probs = F.softmax(1 * pred_logits, dim=1)  # 1 is the temperature parameter
-
-                    
                     
                     # Metrics computation, not used for training
                     pred_seg = probs2one_hot(pred_probs)  # shape (B, C, H, W)
+
                     # In order to calculate dice on 3d, we collect all predictions resulting from a single forward pass + their corresponding gts
                     if m == 'val':  
                         all_predictions.append(pred_seg.cpu())
@@ -271,23 +261,19 @@ def runTraining(args):
                     log_IOU[e, j:j + B, :] = iou_coef(gt, pred_seg)  # One IOU value per sample and per class
 
 
-                    # cross entropy loss 
+                    # Cross entropy loss 
                     loss = loss_fn(pred_probs, gt)
                     log_loss[e, i] = loss.item()  # One loss value per batch (averaged in the loss)
 
-                    # dice loss
-                    dloss = dloss_fn(pred_probs, gt)
-                    log_dloss[e, i] = dloss.item() 
+                    closs = closs_fn(pred_probs, gt)
+                    log_closs[e, i] = closs.item()
 
-                    # focal loss
-                    floss = fl_loss_fn(pred_probs, gt)
-                    log_focal[e, i] = floss.item()
-
-
-                    # MAKE SURE TO SPECIFY THE CORRECT LOSS FUNCTION HERE - LOSS, DLOSS, FLOSS
+                    # MAKE SURE TO SPECIFY THE CORRECT LOSS FUNCTION HERE - LOSS(ce loss), DLOSS (dice loss), 
+                    # FLOSS (focal loss), GDLOSS (generalised dice loss), CLOSS (combined loss = 0.5*ce + 0.5*dice)
                     if opt:  # Only for training
-                        loss.backward()
+                        closs.backward()
                         opt.step()
+                        
 
                     if m == 'val':
                         with warnings.catch_warnings():
@@ -303,14 +289,18 @@ def runTraining(args):
                     postfix_dict: dict[str, str] = {"Dice": f"{log_dice[e, :j, 1:].mean():05.3f}",
                                                     "IoU": f"{log_IOU[e, :j, 1:].mean():05.3f}",
                                                     "Loss": f"{log_loss[e, :i + 1].mean():5.2e}",
-                                                    "Focal Loss": f"{log_focal[e, :i + 1].mean():5.2e}",
-                                                    "dLoss": f"{log_dloss[e, :i + 1].mean():5.2e}"
+                                                    "CLoss": f"{log_closs[e, :i + 1].mean():5.2e}"
+                                                    # "Focal Loss": f"{log_focal[e, :i + 1].mean():5.2e}"
+                                                    # "dLoss": f"{log_dloss[e, :i + 1].mean():5.2e}",
+                                                    # "gdLoss": f"{log_gdloss[e, :i + 1].mean():5.2e}"
                                                     }
                     # Print the means per organ
                     if K > 2:
                         postfix_dict |= {f"Dice-{k}": f"{log_dice[e, :j, k].mean():05.3f}" for k in range(1, K)}
                         postfix_dict |= {f"IoU-{k}": f"{log_IOU[e, :j, k].mean():05.3f}" for k in range(1, K)}
                     tq_iter.set_postfix(postfix_dict)
+            
+
             
             if m == 'val':
                 all_predictions_tensor = torch.cat(all_predictions, dim=0)
@@ -321,7 +311,6 @@ def runTraining(args):
                 dice_scores_per_patient = volume_dice(all_predictions_tensor, all_gt_tensor, path_to_slices)
                 iou_scores_per_patient = volume_iou(all_predictions_tensor, all_gt_tensor, path_to_slices)
                 hausdorff_per_patient, _95hausdorf_per_patient, asd_per_patient = distance_based_metrics(all_predictions_tensor, all_gt_tensor, path_to_slices, K)
-                # slice_based_hd_per_patient = slice_hausdorff(all_predictions_tensor, all_gt_tensor, path_to_slices,K)
                 cldice_per_patient = cldice(all_predictions_tensor, all_gt_tensor, path_to_slices)
 
                 assert (dice_scores_per_patient.keys() == iou_scores_per_patient.keys() == hausdorff_per_patient.keys() == _95hausdorf_per_patient.keys() == asd_per_patient.keys() == cldice_per_patient.keys()), "Mismatch in patient keys across different metric dictionaries"
@@ -331,7 +320,6 @@ def runTraining(args):
                     hausdorff = hausdorff_per_patient[patient]
                     _95hausdorff = _95hausdorf_per_patient[patient]
                     asd = asd_per_patient[patient]
-                    # sb_hd = slice_based_hd_per_patient[patient]
                     cldice_score = cldice_per_patient[patient]
 
                     # Store the metrics in the corresponding log tensors
@@ -340,7 +328,6 @@ def runTraining(args):
                     log_hausdorff[e, patient_idx, :] = hausdorff.to(dtype=log_hausdorff.dtype, device=log_hausdorff.device)
                     log_95hausdorff[e, patient_idx, :] = _95hausdorff.to(dtype=log_95hausdorff.dtype, device=log_95hausdorff.device)
                     log_asd[e, patient_idx, :] = asd.to(dtype=log_asd.dtype, device=log_asd.device)
-                    # log_slicehd[e, patient_idx, :] = sb_hd.to(dtype=log_slicehd.dtype, device=log_slicehd.device)  # 
                     log_cldice[e, patient_idx, :] = cldice_score.to(dtype=log_cldice.dtype, device=log_cldice.device)
 
                 
@@ -366,48 +353,44 @@ def runTraining(args):
                         class_idx = class_indices[k]  
                         print(f"{metric_name}-{class_idx}: {log_metric[e, :, k].mean():05.3f}\t", end='')
                     print() 
+   
+            current_3_dice: float = log_3d_dice_val[e, :, 1:].mean().item()
+            if m=='train'and sched:  
+                print("yes we can apply scheduler")
+                # Update scheduler after each epoch (training phase only)
+
+                sched.step(current_3_dice)
 
         # I save it at each epoch, in case the code crashes or I decide to stop it early
         np.save(args.dest / "loss_tra.npy", log_loss_tra)
-        np.save(args.dest / "dloss_tra.npy", log_dloss_tra)
-        np.save(args.dest / "floss_tra.npy", log_focal_tra)
+        np.save(args.dest / "closs_tra.npy", log_closs_tra)
         np.save(args.dest / "dice_tra.npy", log_dice_tra)
         np.save(args.dest / "iou_tra.npy", log_IOU_tra)
         
         np.save(args.dest / "loss_val.npy", log_loss_val)
-        np.save(args.dest / "dloss_val.npy", log_dloss_val)
-        np.save(args.dest / "floss_val.npy", log_focal_val)
+        np.save(args.dest / "closs_val.npy", log_closs_val)
         np.save(args.dest / "dice_val.npy", log_dice_val)
         np.save(args.dest / "iou_val.npy", log_IOU_val)
 
         np.save(args.dest / "3ddice_val.npy", log_3d_dice_val)
         np.save(args.dest / "3dIOU_val.npy", log_3d_IOU_val)
-        #np.save(args.dest / "slHD.npy", log_slicehd)
         np.save(args.dest / "HD_val.npy", log_hausdorff)
         np.save(args.dest / "95HD_val.npy", log_95hausdorff)
         np.save(args.dest / "ASD_val.npy", log_asd_val)
         np.save(args.dest / "cldice_val.npy", log_cldice)
 
-        
-
-        current_dice: float = log_dice_val[e, :, 1:].mean().item()
-        current_iou: float = log_3d_IOU_val[e, :, 1:].mean().item()
         current_3d_dice: float = log_3d_dice_val[e, :, 1:].mean().item()
-        current_95hd: float = log_95hausdorff[e, :, 1:].mean().item()
+        current_95hd: float = log_95hausdorff[e, :, :].mean().item()
 
         # Check for improvements
-        if (current_dice > best_dice) and (current_3d_dice > best_3d_dice) and (current_iou > best_iou) and (current_95hd < best_95hd):
+        if current_3d_dice > best_3d_dice: # and (current_3d_dice > best_3d_dice) and (current_iou > best_iou) and (current_95hd < best_95hd):
             print(f">>> Improved metrics at epoch {e}:")
-            print(f"    Dice: {best_dice:05.3f} -> {current_dice:05.3f} DSC")
-            print(f"    Dice: {best_3d_dice:05.3f} -> {current_3d_dice:05.3f} DSC")
-            print(f"    IoU: {best_iou:05.3f} -> {current_iou:05.3f} IoU")
+            print(f"    3D Dice: {best_3d_dice:05.3f} -> {current_3d_dice:05.3f} DSC")
             print(f"    Hausdorff: {best_95hd:05.3f} -> {current_95hd:05.3f} HD")
 
             # Update best metrics
-            best_dice = current_dice
-            best_3d_dice = current_3d_dice
-            best_iou = current_iou
-            best_95hd = current_95hd
+            if current_3d_dice > best_3d_dice:
+                best_3d_dice = current_3d_dice
 
             # Write the best epoch number to a file
             with open(args.dest / "best_epoch.txt", 'w') as f:
@@ -425,10 +408,10 @@ def runTraining(args):
 
             best_epoch = e
 
-        #stops if metrics don't improve after 5 epochs above epoch 15
-        patience = 5 #how many epochs it needs to wait to decide to stop
+        # Stops if metrics don't improve after 10 epochs above 50 (total e = 100)
+        patience = 10 #how many epochs it needs to wait to decide to stop
 
-        if e >= 15:
+        if e >= 50:
             if (e - best_epoch) >= patience:
                 print(f"Stopping early at epoch {e} due to no improvement in {patience} epochs after epoch {best_epoch}")
                 break
