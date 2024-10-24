@@ -4,6 +4,7 @@ import warnings
 import torch.nn.functional as F
 
 from pathlib import Path
+from PIL import Image
 from torchvision import transforms
 from torch.utils.data import DataLoader
 from utils import (
