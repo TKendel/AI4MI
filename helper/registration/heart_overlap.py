@@ -14,7 +14,7 @@ This file loads three (3) GT of patient 27, the initial correct gt, the gt with 
 and that calculated with the given transformation matrix. The shifted heart is positioned through our methods
 and the overlap is calculated.
 
-This script is not meant to be run mulstiple times, and was only used to better understand the behaviour of
+This script is not meant to be run multiple times, and was only used to better understand the behaviour of
 our implementation
 '''
 

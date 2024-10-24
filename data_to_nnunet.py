@@ -9,7 +9,7 @@ This file reads files from the format we utlized in the project and outputs copi
 in the format expected by nnU-Net.
 It was not expected that this would be ran multiple times, so no much fexibility 
 was built into it and requiers editing if the segthor file format changes 
-(unlikely within our project spawn, but a concer for a longer project)
+(unlikely within our project spawn, but a concern for a longer project)
 '''
 
 id = 550        #ID for the dataset folder (destination). Format needed by nnU-Net

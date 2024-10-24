@@ -20,6 +20,7 @@ from torch.utils.data import Dataset
 '''
 Test performance of model
 '''
+
 def make_dataset(root, subset) -> list[tuple[Path, Path]]:
     assert subset in ['train', 'val', 'test']
 
@@ -87,16 +88,16 @@ model.eval()
 root_dir = 'data\SEGTHOR_TEST\\'
 K = 5
 
-train_set = SliceDataset('test',
+test_set = SliceDataset('test',
                             root_dir,
                             img_transform=img_transform,
                             debug=False)
 
-train_loader = DataLoader(train_set,
+test_loader = DataLoader(test_set,
                             num_workers=0,
                             shuffle=True) 
 
-tq_iter = tqdm_(enumerate(train_loader), total=len(train_loader))
+tq_iter = tqdm_(enumerate(test_loader), total=len(test_loader))
 for i, data in tq_iter:  # i = batch
     img = data['images']
     pred = model(img)
