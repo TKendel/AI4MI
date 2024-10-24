@@ -31,6 +31,9 @@ def updateNpyShape(root, file):
 
 
 def getBestEpoch(root, file, best_epoch):
+    '''
+    Get best epoch of volume per class
+    '''
     data = np.load(os.path.join(root, file))
     bestEpochVolume = data[:, :, best_epoch]
 
