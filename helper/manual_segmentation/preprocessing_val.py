@@ -1,38 +1,59 @@
 import cv2 as cv
-import numpy as np
 import matplotlib.pyplot as plt
 import os
+
+
+'''
+Apply different morphological and transformation steps. Used together with manual segmentation 
+'''
 
 # Load the image in grayscale
 # img = cv.imread('data\SEGTHOR\\train\img\Patient_03_0010.png', cv.IMREAD_GRAYSCALE)
 # assert img is not None, "file could not be read!"  # Check if the image was successfully loaded
 
-image_folder = r"data\SEGTHOR_fixed2\\train\\img"
+val_image_folder = r"data\SEGTHOR_fixed\\val\\img"
 
-# List all files in the train folder
-image_files = [f for f in os.listdir(image_folder) if f.endswith('.png')]
+# List all files in the validation folder
+image_files = [f for f in os.listdir(val_image_folder) if f.endswith('.png')]
 
 # Loop through each image file in the folder
 for image_file in image_files:
     # Construct the full file path
-    image_path = os.path.join(image_folder, image_file)
+    image_path = os.path.join(val_image_folder, image_file)
 
     # Load the image in grayscale
     img = cv.imread(image_path, cv.IMREAD_GRAYSCALE)
     assert img is not None, f"Image {image_file} could not be read!"
 
-    # Apply median blur (optional, you can skip this if not needed)
+    # # Need to check why, but pyplot opens the grayscaled image much brighter
+    plt.imsave(f'test\{image_file}', img, cmap='gray')
+
+    img = cv.imread(f'test\{image_file}', cv.IMREAD_GRAYSCALE)
+    os.remove(f'test\{image_file}')
+    # # Apply median blur (optional, you can skip this if not needed)
     # img_blurred = cv.medianBlur(img, 1)
+    # cv.imwrite(f'test\\2_{image_file}', img)  # Save the rotated (and preprocessed) image
 
     # === Apply Contrast Enhancement (CLAHE) ===
     clahe = cv.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8)) # clipLimit controls the amount of contrast enhancement
     img_contrast = clahe.apply(img)  # Enhance contrast
+    cv.imwrite(f'test\{image_file}', img_contrast)  # Save the rotated (and preprocessed) image
 
     # === Apply Global Thresholding ===
     # ret, th1 = cv.threshold(img_contrast, 10, 255, cv.THRESH_BINARY)
 
-    # Normalize the image before adding noise (to range [0, 1])
-    img_contrast_normalized = img_contrast.astype(np.float32) / 255.0
+    '''
+    NOTE Given that the slicer needs uint8 type data we dont need to convert it to float.
+    This also darkens the output!
+    '''
+    # Normalize the image (to range [0, 1])
+    # img_normalized = img_contrast.astype(np.float32) / 255.0
+    # cv.imwrite(f'test\\4_{image_file}', img_normalized)  # Save the rotated (and preprocessed) image
+
+    # Save the preprocessed image
+    # new_filename = os.path.splitext(image_file)[0] + '_processed.png'  # Add suffix to the filename
+    # new_image_path = os.path.join(val_image_folder, new_filename)  # Full path for saving
+    # cv.imwrite(image_path, img_normalized)  # Save the rotated (and preprocessed) image
 
     # === Generate Gaussian noise ===
     # mean = 0
@@ -42,9 +63,9 @@ for image_file in image_files:
     # Add the Gaussian noise to the normalized image
     #noisy_img = img_normalized + gaussian_noise
 
-    # Clip the values to stay within valid range [0, 1] and convert back to [0, 255]
-    contrasted_img_clipped = np.clip(img_contrast_normalized, 0, 1) * 255.0
-    final_img = contrasted_img_clipped.astype(np.uint8)
+    # # Clip the values to stay within valid range [0, 1] and convert back to [0, 255]
+    # noisy_img_clipped = np.clip(img_normalized, 0, 1) * 255.0
+    # noisy_th1 = noisy_img_clipped.astype(np.uint8)
 
     # === Apply Slight Rotation to Simulate Patient Orientation Variations ===
     # angle = np.random.uniform(-10, 10)  # Random small rotation angle (-10 to +10 degrees)
@@ -59,7 +80,7 @@ for image_file in image_files:
     cv.imwrite(image_path, final_img)  # Overwrite the original image with the preprocessed image
 
     # # === Display the original, enhanced, and rotated images ===
-    # titles = ['Original Image', 'Final Preprocessed Image'] # final preprocesed image includes median blur, contrast enhancing, global thresholding, normalization and clip the values
+    # titles = ['Original Image', 'Contrast Enhanced Image']
     # images = [img, img_contrast]
 
     # for i in range(2):

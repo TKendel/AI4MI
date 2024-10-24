@@ -4,6 +4,7 @@ import nibabel as nib
 import numpy as np
 import SimpleITK as sitk
 import matplotlib.pyplot as plt
+
 from scipy.ndimage import affine_transform
 
 
@@ -34,15 +35,17 @@ transformed_dir = './data/transformed_segthor_train/train'
 if not os.path.exists(transformed_dir):
     shutil.copytree(original_dir, transformed_dir)
 
-
 def load_patient_data(patient_id, gt_filename='GT.nii.gz'):
     '''
-     This function loads the ground truth NIfTI file for a patient and returns the data.
-     '''
+    This function loads the ground truth NIfTI file for a patient and returns the data.
+    '''
     patient_path = os.path.join(f"{transformed_dir}/Patient_{str(patient_id).zfill(2)}", gt_filename)
     return nib.load(patient_path).get_fdata()
 
 def visualize_segmentations(gt2_heart_sitk, transformed_gt_heart_sitk):
+    '''
+    Visualize segmentation
+    '''
     # Convert both images to numpy arrays
     gt2_heart_array = sitk.GetArrayFromImage(gt2_heart_sitk)
     transformed_gt_heart_array = sitk.GetArrayFromImage(transformed_gt_heart_sitk)
@@ -67,10 +70,10 @@ def visualize_segmentations(gt2_heart_sitk, transformed_gt_heart_sitk):
     plt.show()
 
 def calc_affine_transform(gt_data, gt2_data):
-    """
+    '''
     Compute the affine transformation between GT and GT2 for Patient 27.
-    """
-    #  extract heart segmentations
+    '''
+    # Extract heart segmentations
     gt_heart = (gt_data == 2).astype(np.uint8)    
     gt2_heart = (gt2_data == 2).astype(np.uint8)
 

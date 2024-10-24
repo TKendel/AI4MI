@@ -3,6 +3,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
+
 if __name__ == "__main__":
         p = np.linspace(0, 1, 100)
         print(p)

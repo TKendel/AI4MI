@@ -3,11 +3,16 @@ import numpy as np
 import matplotlib.pyplot as plt
 import os
 
+
+'''
+Apply different morphological and transformation steps. Used together with manual segmentation 
+'''
+
 # Load the image in grayscale
 # img = cv.imread('data\SEGTHOR\\train\img\Patient_03_0010.png', cv.IMREAD_GRAYSCALE)
 # assert img is not None, "file could not be read!"  # Check if the image was successfully loaded
 
-image_folder = r"C:\Users\mirth\OneDrive\Documenten\Studie AI\Master AI\AI for Medical Imaging\Group Project Medical Imaging\AI4MI\data\SEGTHOR\train\img"
+image_folder = "data\SEGTHOR'\\train\img"
 
 # List all files in the folder
 image_files = [f for f in os.listdir(image_folder) if f.endswith('.png')]
@@ -41,7 +46,7 @@ for image_file in image_files:
     # gaussian_noise = np.random.normal(mean, std_dev, img.shape)
 
     # Add the Gaussian noise to the normalized image
-    #noisy_img = img_normalized + gaussian_noise
+    # noisy_img = img_normalized + gaussian_noise
 
     # Clip the values to stay within valid range [0, 1] and convert back to [0, 255]
     noisy_img_clipped = np.clip(img_normalized, 0, 1) * 255.0
